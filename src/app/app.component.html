@@ -5,6 +5,7 @@
     let-signOut="signOut"
   >
     <router-outlet></router-outlet>
+    <h1>Hello {{user?.signInDetails?.loginId}}'s todos</h1>
     <app-todos></app-todos>
     <button (click)="signOut()">Sign Out</button>
   </ng-template>
