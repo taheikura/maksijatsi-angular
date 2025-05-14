@@ -28,15 +28,21 @@
               "node_modules/@aws-amplify/ui-angular/theme.css",
               "src/styles.css"
             ],
-            "scripts": []
+            "scripts": [],
+            "allowedCommonJsDependencies": [
+              "qrcode",
+              "lodash/kebabCase.js",
+              "lodash/pickBy.js",
+              "lodash/merge.js"
+            ]
           },
           "configurations": {
             "production": {
               "budgets": [
                 {
                   "type": "initial",
-                  "maximumWarning": "1mb",
-                  "maximumError": "1.5mb"
+                  "maximumWarning": "1.5mb",
+                  "maximumError": "2mb"
                 },
                 {
                   "type": "anyComponentStyle",
