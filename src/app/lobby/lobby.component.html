@@ -1,0 +1,10 @@
+<main>
+    <h1>Games</h1>
+    <button (click)="createGame()">+ new</button>
+    <ul>
+        <li
+            *ngFor="let game of games;">
+            {{ game.name }}
+        </li>
+    </ul>
+</main>
