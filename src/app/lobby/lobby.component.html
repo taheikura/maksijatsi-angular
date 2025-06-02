@@ -1,10 +1,33 @@
 <main>
     <h1>Games</h1>
     <button (click)="createGame()">+ new</button>
-    <ul>
+
+    <table mat-table [dataSource]="games" class="mat-elevation-z8">
+
+    <ng-container matColumnDef="name">
+        <th mat-header-cell *matHeaderCellDef> Nimi </th>
+        <td mat-cell *matCellDef="let g"> {{g.name}} </td>
+    </ng-container>
+
+    <ng-container matColumnDef="owner">
+        <th mat-header-cell *matHeaderCellDef> Omistaja </th>
+        <td mat-cell *matCellDef="let g"> {{g.weight}} </td>
+    </ng-container>
+
+    <ng-container matColumnDef="createdAt">
+        <th mat-header-cell *matHeaderCellDef> Tila </th>
+        <td mat-cell *matCellDef="let g"> {{g.state}} </td>
+    </ng-container>
+
+    <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+    <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+    </table>
+
+    <!-- <ul>
         <li
-            *ngFor="let game of games;">
+            *ngFor="let game of games;"
+            (click)="this.joinGame(game.id)">
             {{ game.name }}
         </li>
-    </ul>
+    </ul> -->
 </main>
