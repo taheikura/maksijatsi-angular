@@ -2,7 +2,7 @@ import { Component } from '@angular/core';
 
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../../amplify/data/resource';
-import { AuthUser, fetchUserAttributes } from 'aws-amplify/auth';
+import { AuthUser, fetchUserAttributes, UserAttributeKey } from 'aws-amplify/auth';
 import { PreloadData } from './preload.decorator';
 import { UserService } from '../user.service';
 import { MatPaginatorModule } from '@angular/material/paginator';
@@ -67,9 +67,11 @@ export class GamesDataSource implements DataSource<Game> {
 })
 @PreloadData(async function (this: LobbyComponent) {
   this.user = await this.userService.fetchData();
+  this.userAttributes = await fetchUserAttributes();
 })
 export class LobbyComponent {
   user: AuthUser | null = null;
+  userAttributes: Partial<Record<UserAttributeKey, string>> | null = null;
 
   dataSource: GamesDataSource;
   displayedColumns = ["name", "owner", "createdAt", "state"];
@@ -130,16 +132,14 @@ export class LobbyComponent {
       return;
     }
     try {
-      const userAttributes = await fetchUserAttributes();
       const game = await client.models.Game.create({
         name: window.prompt('Game name')!,
-        hostedBy: userAttributes.nickname ?? 'unknown',
+        hostedBy: this.userAttributes?.nickname ?? 'unknown',
         state: 'joinable'
       },
       {
         authMode: 'userPool'
       });
-      console.log(game.data);
       if (game.data?.id) {
         this.joinGame(game.data?.id);
       }
