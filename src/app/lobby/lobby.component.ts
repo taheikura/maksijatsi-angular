@@ -1,76 +1,165 @@
 import { Component } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../../amplify/data/resource';
+import { AuthUser, fetchUserAttributes, UserAttributeKey } from 'aws-amplify/auth';
+import { PreloadData } from './preload.decorator';
+import { UserService } from '../user.service';
+import { MatPaginatorModule } from '@angular/material/paginator';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatTableModule } from '@angular/material/table';
+import { GamesService } from './games.service';
+import { CollectionViewer, DataSource } from '@angular/cdk/collections';
+import { BehaviorSubject, Observable } from 'rxjs';
+import { AsyncPipe } from '@angular/common';
+import { Router } from '@angular/router';
 
 const client = generateClient<Schema>();
 
-@Component({
-  selector: 'app-lobby',
-  imports: [CommonModule],
-  templateUrl: `lobby.component.html`,
-  styleUrl: './lobby.component.css',
-})
-export class LobbyComponent {
-  games: any[] = [];
+type Game = Schema['Game']['type'];
 
-  public createSub = client.models.Game.onCreate().subscribe({
-    next: (data) => this.games = [...this.games, data],
-    error: (error) => console.warn(error),
-  });
+export class GamesDataSource implements DataSource<Game> {
+  private readonly gamesSubject = new BehaviorSubject<Game[]>([]);
+  private readonly loadingSubject = new BehaviorSubject<boolean>(false);
 
-  public updateSub = client.models.Game.onUpdate().subscribe({
-    next: (data) => this.games = [...this.games, data],
-    error: (error) => console.warn(error),
-  });
+  constructor(private readonly gamesService: GamesService) {}
 
-  public deleteSub = client.models.Game.onDelete().subscribe({
-    next: (data) => this.games = [...this.games, data],
-    error: (error) => console.warn(error),
-  });
-
-  constructor() {
+  connect(collectionViewer: CollectionViewer): Observable<Game[]> {
+    return this.gamesSubject.asObservable();
   }
 
-  ngOnInit(): void {
-    this.listGames();
+  disconnect(collectionViewer: CollectionViewer): void {
+    this.gamesSubject.complete();
+    this.loadingSubject.complete();
   }
 
-  ngOnDestroy(): void {
-    this.createSub.unsubscribe();
-    this.updateSub.unsubscribe();
-    this.deleteSub.unsubscribe();
-  }
+  async loadGames(filter = '', limit = 10, nextToken?: string) {
+    this.loadingSubject.next(true);
+    this.gamesSubject.next([]); // Clear previous games
 
-  listGames() {
     try {
-      client.models.Game.observeQuery().subscribe({
-        next: ({ items, isSynced }) => {
-          console.log('Games fetched:', items, 'Is synced:', isSynced);
-          this.games = items;
-        },
-      });
+      const result = await this.gamesService.findGames(filter, limit, nextToken);
+      if (result.errors) {
+        console.error('Error loading games:', result.errors);
+        this.gamesSubject.next([]);
+        return;
+      }
+      // Assuming result.data contains the games array
+      this.gamesSubject.next(result.data || []);
     } catch (error) {
-      console.error('error fetching games', error);
+      console.error('Error loading games:', error);
+      this.gamesSubject.next([]);
+    } finally {
+      this.loadingSubject.next(false);
     }
   }
 
-  createGame() {
+  loading() {
+    return this.loadingSubject.asObservable();
+  }
+}
+
+@Component({
+  selector: 'app-lobby',
+  imports: [MatTableModule, MatPaginatorModule, MatProgressSpinnerModule, AsyncPipe],
+  templateUrl: `lobby.component.html`,
+  styleUrl: './lobby.component.css',
+})
+@PreloadData(async function (this: LobbyComponent) {
+  this.user = await this.userService.fetchData();
+  this.userAttributes = await fetchUserAttributes();
+})
+export class LobbyComponent {
+  user: AuthUser | null = null;
+  userAttributes: Partial<Record<UserAttributeKey, string>> | null = null;
+
+  dataSource: GamesDataSource;
+  displayedColumns = ["name", "owner", "createdAt", "state"];
+
+  constructor(private readonly userService: UserService,
+    private readonly gamesService: GamesService,
+    private readonly router: Router) {
+    this.dataSource = new GamesDataSource(this.gamesService);
+  }
+
+  ngOnInit() {
+    this.dataSource.loadGames();
+  }
+
+  async getUserProfile() {
     try {
-      client.models.Game.create({
+      const { data, errors } = await client.models.User.list({
+        filter: {
+          profileOwner: {
+            beginsWith: this.user?.userId,
+          }
+        }
+      });
+      if (errors) {
+        console.error('Error fetching user:', errors);
+        return null;
+      }
+
+      return data[0];
+    } catch (error) {
+      console.error('error fetching user', error);
+    }
+    return null;
+  }
+
+  async joinGame(id: string) {
+    try {
+      const user = await this.getUserProfile();
+      if (!user) {
+        console.error('User profile not found');
+        return;
+      }
+      client.models.User.update({
+        id: user.id,
+        gameId: id,
+      }, {
+        authMode: 'userPool',
+      });
+      this.router.navigate(['/game', id]);
+    } catch (error) {
+      console.error('error joining game', error);
+    }
+  }
+
+  async createGame() {
+    if (!this.user) {
+      console.error('User not authenticated');
+      return;
+    }
+    try {
+      const game = await client.models.Game.create({
         name: window.prompt('Game name')!,
+        hostedBy: this.userAttributes?.nickname ?? 'unknown',
+        state: 'joinable'
       },
       {
         authMode: 'userPool'
       });
-      this.listGames();
+      if (game.data?.id) {
+        this.joinGame(game.data?.id);
+      }
     } catch (error) {
       console.error('error creating games', error);
     }
   }
 
   deleteGame(id: string) {
-    client.models.Game.delete({ id })
+    client.models.Game.update({
+      id,
+      state: 'finished'
+    }, {
+      authMode: 'userPool',
+    })
+  }
+
+  onRowClicked(game: any) {
+    this.router.navigate(['/game', game.id]);
+    console.log('Row clicked:', game);
   }
 
 }

@@ -1,10 +1,44 @@
 <main>
-    <h1>Games</h1>
-    <button (click)="createGame()">+ new</button>
-    <ul>
-        <li
-            *ngFor="let game of games;">
-            {{ game.name }}
-        </li>
-    </ul>
+  <h1>Games</h1>
+  <button (click)="createGame()">+ new</button>
+
+  <mat-table [dataSource]="dataSource" class="mat-elevation-z8">
+    <ng-container matColumnDef="name">
+      <mat-header-cell *matHeaderCellDef> Nimi </mat-header-cell>
+      <mat-cell *matCellDef="let game"> {{game.name}} </mat-cell>
+    </ng-container>
+
+    <ng-container matColumnDef="owner">
+      <mat-header-cell *matHeaderCellDef> Omistaja </mat-header-cell>
+      <mat-cell *matCellDef="let game"> {{game.hostedBy}} </mat-cell>
+    </ng-container>
+
+    <ng-container matColumnDef="createdAt">
+      <mat-header-cell *matHeaderCellDef> Luotu </mat-header-cell>
+      <mat-cell *matCellDef="let game"> {{game.createdAt}} </mat-cell>
+    </ng-container>
+
+    <ng-container matColumnDef="state">
+      <mat-header-cell *matHeaderCellDef> Tila </mat-header-cell>
+      <mat-cell *matCellDef="let game"> {{game.state}} </mat-cell>
+    </ng-container>
+
+    <mat-header-row *matHeaderRowDef="displayedColumns"></mat-header-row>
+    <mat-row *matRowDef="let row; columns: displayedColumns" class="row-link"
+      (click)="onRowClicked(row)" onkeypress="onRowClicked(row)"></mat-row>
+
+    <tr class="mat-row" *matNoDataRow>
+      @if (dataSource.loading() | async) {
+        <td class="mat-cell" colspan="displayedColumns.length">
+          <div class="spinner-container">
+            <mat-spinner></mat-spinner>
+          </div>
+        </td>
+      } @else {
+        <tr class="mat-cell" colspan="3">Ei pelejä</tr>
+      }
+    </tr>
+  </mat-table>
+
+  <mat-paginator [pageSize]="10" [pageSizeOptions]="[10, 20, 50]"></mat-paginator>
 </main>
