@@ -8,6 +8,7 @@ const schema = a.schema({
   Game: a
     .model({
       name: a.string().required(),
+      hostedBy: a.string().required(),
       state: a.enum(['joinable', 'ongoing', 'finished']),
       users: a.hasMany('User', 'gameId'),
       scoreSheet: a.hasMany('ScoreSheet', 'gameId'),
