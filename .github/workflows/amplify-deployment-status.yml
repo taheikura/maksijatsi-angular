@@ -47,7 +47,10 @@ jobs:
       - name: Check Amplify deployment status
         id: amplify-status
         run: |
-          STATUS=$(aws amplify list-jobs --app-id ${{ secrets.AMPLIFY_APP_ID }} --branch-name main --max-items 1 --query 'jobSummaries[0].status' --output text)
+          STATUS=$(aws amplify list-jobs --app-id ${{ secrets.AMPLIFY_APP_ID }} --branch-name main --max-items 1 --query 'jobSummaries[0].status' --output text 2>/dev/null || echo "PENDING")
+          if [ "$STATUS" = "None" ] || [ -z "$STATUS" ]; then
+            STATUS="PENDING"
+          fi
           echo "status=$STATUS" >> $GITHUB_OUTPUT
 
       - name: Update deployment labels
