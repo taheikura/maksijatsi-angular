@@ -1,31 +1,35 @@
 <main>
   <h1>Games</h1>
-  <button (click)="createGame()">+ new</button>
+  <button type="button" (click)="createGame()">+ new</button>
 
   <mat-table [dataSource]="dataSource" class="mat-elevation-z8">
     <ng-container matColumnDef="name">
       <mat-header-cell *matHeaderCellDef> Nimi </mat-header-cell>
-      <mat-cell *matCellDef="let game"> {{game.name}} </mat-cell>
+      <mat-cell *matCellDef="let game"> {{ game.name }} </mat-cell>
     </ng-container>
 
     <ng-container matColumnDef="owner">
       <mat-header-cell *matHeaderCellDef> Omistaja </mat-header-cell>
-      <mat-cell *matCellDef="let game"> {{game.hostedBy}} </mat-cell>
+      <mat-cell *matCellDef="let game"> {{ game.hostedBy }} </mat-cell>
     </ng-container>
 
     <ng-container matColumnDef="createdAt">
       <mat-header-cell *matHeaderCellDef> Luotu </mat-header-cell>
-      <mat-cell *matCellDef="let game"> {{game.createdAt}} </mat-cell>
+      <mat-cell *matCellDef="let game"> {{ game.createdAt }} </mat-cell>
     </ng-container>
 
     <ng-container matColumnDef="state">
       <mat-header-cell *matHeaderCellDef> Tila </mat-header-cell>
-      <mat-cell *matCellDef="let game"> {{game.state}} </mat-cell>
+      <mat-cell *matCellDef="let game"> {{ game.state }} </mat-cell>
     </ng-container>
 
     <mat-header-row *matHeaderRowDef="displayedColumns"></mat-header-row>
-    <mat-row *matRowDef="let row; columns: displayedColumns" class="row-link"
-      (click)="onRowClicked(row)" onkeypress="onRowClicked(row)"></mat-row>
+    <mat-row
+      *matRowDef="let row; columns: displayedColumns"
+      class="row-link"
+      (click)="onRowClicked(row)"
+      onkeypress="onRowClicked(row)"
+    ></mat-row>
 
     <tr class="mat-row" *matNoDataRow>
       @if (dataSource.loading() | async) {
@@ -35,7 +39,9 @@
           </div>
         </td>
       } @else {
-        <tr class="mat-cell" colspan="3">Ei pelejä</tr>
+        <tr class="mat-cell" colspan="3">
+          Ei pelejä
+        </tr>
       }
     </tr>
   </mat-table>

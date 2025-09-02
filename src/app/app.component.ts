@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { Amplify } from 'aws-amplify';
 import outputs from '../../amplify_outputs.json';
@@ -15,8 +15,9 @@ Amplify.configure(outputs);
 })
 export class AppComponent {
   title = 'maksi-jatsi';
+  public authenticator = inject(AuthenticatorService);
 
-  constructor(public authenticator: AuthenticatorService) {
+  constructor() {
     Amplify.configure(outputs);
   }
 }

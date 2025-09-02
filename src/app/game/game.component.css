@@ -1,3 +1,24 @@
 :host {
   display: block;
 }
+
+body {
+  margin: 0;
+}
+canvas {
+  display: block;
+}
+#rollButton {
+  position: absolute;
+  top: 40px;
+  left: 10px;
+  padding: 10px 20px;
+  font-size: 16px;
+}
+#nudgeButton {
+  position: absolute;
+  top: 40px;
+  left: 255px;
+  padding: 10px 20px;
+  font-size: 16px;
+}

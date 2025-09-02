@@ -1,6 +1,6 @@
-import type { Schema } from "../../data/resource"
+import type { Schema } from '../../data/resource';
 
-export const handler: Schema["throwDice"]["functionHandler"] = async (event) => {
+export const handler: Schema['throwDice']['functionHandler'] = async (event) => {
   // arguments typed from `.arguments()`
   const { numberOfDice } = event.arguments;
 
@@ -8,7 +8,7 @@ export const handler: Schema["throwDice"]["functionHandler"] = async (event) => 
   const dropHeight = 16;
   const maxVel = 13;
 
-  const dice = []
+  const dice = [];
   for (let index = 0; index < numberOfDice; index++) {
     const u1 = Math.random();
     const u2 = Math.random();
@@ -20,19 +20,19 @@ export const handler: Schema["throwDice"]["functionHandler"] = async (event) => 
     const z = Math.sqrt(u1) * Math.cos(2 * Math.PI * u3);
 
     const position = {
-      x: Math.random() * tableSize / 10 + tableSize / 3.5,
+      x: (Math.random() * tableSize) / 10 + tableSize / 3.5,
       y: Math.random() + dropHeight,
-      z: Math.random() * tableSize / 10 + tableSize / 3.5,
+      z: (Math.random() * tableSize) / 10 + tableSize / 3.5,
     };
     const quaternion = {
-      w: w,
-      x: x,
-      y: y,
-      z: z,
+      w,
+      x,
+      y,
+      z,
     };
     const velocity = {
       x: -Math.random() * maxVel - 6,
-      y: -Math.random() * maxVel / 2 - 5,
+      y: (-Math.random() * maxVel) / 2 - 5,
       z: -Math.random() * maxVel - 6,
     };
     const angularVelocity = {
@@ -41,10 +41,10 @@ export const handler: Schema["throwDice"]["functionHandler"] = async (event) => 
       z: Math.random() * 50 - 25,
     };
     dice.push({
-      position: position,
-      quaternion: quaternion,
-      velocity: velocity,
-      angularVelocity: angularVelocity,
+      position,
+      quaternion,
+      velocity,
+      angularVelocity,
     });
   }
 
@@ -52,6 +52,6 @@ export const handler: Schema["throwDice"]["functionHandler"] = async (event) => 
   return {
     gravity: { x: 0, y: -24.0, z: 0 },
     groundPosition: { x: 0, y: -0.5, z: 0 },
-    dice: dice,
+    dice,
   };
 };

@@ -8,11 +8,10 @@ import { BehaviorSubject } from 'rxjs';
 // The loading state is managed using a BehaviorSubject, which allows components to
 // get the current loading state and also react to future changes.
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class LoadingService {
-  private readonly loadingSubject =
-    new BehaviorSubject<boolean>(false);
+  private readonly loadingSubject = new BehaviorSubject<boolean>(false);
 
   loading$ = this.loadingSubject.asObservable();
 
