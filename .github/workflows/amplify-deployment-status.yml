@@ -9,6 +9,11 @@ on:
 jobs:
   track-deployment:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+      issues: write
+      pull-requests: write
     steps:
       - name: Add deployment pending label
         if: github.event_name == 'pull_request'
