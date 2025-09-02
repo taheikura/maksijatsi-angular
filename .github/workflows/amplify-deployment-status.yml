@@ -27,6 +27,13 @@ jobs:
               labels: ['deployment:pending']
             });
 
+      - name: Debug OIDC token
+        run: |
+          echo "Repository: ${{ github.repository }}"
+          echo "Ref: ${{ github.ref }}"
+          echo "Actor: ${{ github.actor }}"
+          echo "Expected sub: repo:${{ github.repository }}:ref:${{ github.ref }}"
+
       - name: Configure AWS CLI
         uses: aws-actions/configure-aws-credentials@v4
         with:

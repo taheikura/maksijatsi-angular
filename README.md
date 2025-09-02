@@ -1,6 +1,6 @@
 # Maxi Yahtzee - Multiplayer Dice Game
 
-[![Amplify Deployment](https://github.com/taheikura/main/actions/workflows/amplify-deployment-status.yml/badge.svg)](https://github.com/taheikura/main/actions/workflows/amplify-deployment-status.yml)
+[![Amplify Deployment](https://github.com/taheikura/maksijatsi-angular/actions/workflows/amplify-deployment-status.yml/badge.svg)](https://github.com/taheikura/maksijatsi-angular/actions/workflows/amplify-deployment-status.yml)
 [![AWS Amplify](https://img.shields.io/badge/AWS-Amplify-orange)](https://aws.amazon.com/amplify/)
 
 This is a multiplayer Maxi Yahtzee game built with Angular and AWS Amplify,
