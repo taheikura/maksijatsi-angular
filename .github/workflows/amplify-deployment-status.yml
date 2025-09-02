@@ -1,0 +1,67 @@
+name: Amplify Deployment Status
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  track-deployment:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Add deployment pending label
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              labels: ['deployment:pending']
+            });
+
+      - name: Configure AWS CLI
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_DEFAULT_REGION }}
+          role-session-name: GitHubActions
+
+      - name: Wait for deployment
+        run: sleep 30
+
+      - name: Check Amplify deployment status
+        id: amplify-status
+        run: |
+          STATUS=$(aws amplify list-jobs --app-id ${{ secrets.AMPLIFY_APP_ID }} --branch-name main --max-items 1 --query 'jobSummaries[0].status' --output text)
+          echo "status=$STATUS" >> $GITHUB_OUTPUT
+
+      - name: Update deployment labels
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const status = '${{ steps.amplify-status.outputs.status }}';
+            
+            // Remove pending label
+            try {
+              await github.rest.issues.removeLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                name: 'deployment:pending'
+              });
+            } catch (error) {
+              console.log('Pending label not found');
+            }
+            
+            // Add status label
+            const label = status === 'SUCCEED' ? 'deployment:success' : 'deployment:failed';
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              labels: [label]
+            });
