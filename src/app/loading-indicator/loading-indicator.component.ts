@@ -1,4 +1,4 @@
-import { Component, ContentChild, Input, TemplateRef } from '@angular/core';
+import { Component, ContentChild, Input, TemplateRef, OnInit, inject } from '@angular/core';
 import { LoadingService } from '../loading.service';
 import { RouteConfigLoadEnd, RouteConfigLoadStart, Router } from '@angular/router';
 import { Observable, tap } from 'rxjs';
@@ -12,18 +12,19 @@ import { AsyncPipe, NgTemplateOutlet } from '@angular/common';
   styleUrl: './loading-indicator.component.css',
   standalone: true,
 })
-export class LoadingIndicatorComponent {
+export class LoadingIndicatorComponent implements OnInit {
   loading$: Observable<boolean>;
 
   @Input()
   detectRouteTransitions = false;
 
-  @ContentChild("loading")
-  customLoadingIndicator: TemplateRef<any> | null = null;
+  @ContentChild('loading')
+  customLoadingIndicator: TemplateRef<unknown> | null = null;
 
-  constructor(
-  private readonly loadingService: LoadingService,
-  private readonly router: Router) {
+  private readonly loadingService = inject(LoadingService);
+  private readonly router = inject(Router);
+
+  constructor() {
     this.loading$ = this.loadingService.loading$;
   }
 

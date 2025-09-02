@@ -1,9 +1,11 @@
 // Custom Decorator to preload data
-export function PreloadData(preloadFn: () => Promise<any>) {
-  return function (target: any) {
+export function PreloadData<T = unknown>(preloadFn: () => Promise<T>) {
+  return function <
+    U extends { prototype: { ngOnInit?: (...args: unknown[]) => void | Promise<void> } },
+  >(target: U) {
     const originalNgOnInit = target.prototype.ngOnInit;
 
-    target.prototype.ngOnInit = async function (...args: any[]) {
+    target.prototype.ngOnInit = async function (...args: unknown[]) {
       // Preload data before ngOnInit
       await preloadFn.call(this);
 

@@ -10,9 +10,26 @@ frontend:
     preBuild:
       commands:
         - npx ng version
+        # Install Chrome for Cypress in CI environment
+        - apt-get update
+        - apt-get install -y wget gnupg
+        - wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | apt-key add -
+        - echo "deb http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list
+        - apt-get update
+        - apt-get install -y google-chrome-stable
     build:
       commands:
+        # Run code quality checks
+        - npm run code-quality
+        # Build the application
         - npx ng build --configuration=production
+    postBuild:
+      commands:
+        # Start the app in background for E2E testing
+        - npx http-server dist/amplify-angular-template/browser -p 8080 &
+        - sleep 5
+        # Run E2E tests with CI configuration
+        - npx cypress run --config-file cypress.config.ci.js
   artifacts:
     baseDirectory: dist/amplify-angular-template/browser
     files:

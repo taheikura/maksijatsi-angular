@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../../../amplify/data/resource';
@@ -24,11 +24,11 @@ export class GamesDataSource implements DataSource<Game> {
 
   constructor(private readonly gamesService: GamesService) {}
 
-  connect(collectionViewer: CollectionViewer): Observable<Game[]> {
+  connect(_collectionViewer: CollectionViewer): Observable<Game[]> {
     return this.gamesSubject.asObservable();
   }
 
-  disconnect(collectionViewer: CollectionViewer): void {
+  disconnect(_collectionViewer: CollectionViewer): void {
     this.gamesSubject.complete();
     this.loadingSubject.complete();
   }
@@ -69,16 +69,18 @@ export class GamesDataSource implements DataSource<Game> {
   this.user = await this.userService.fetchData();
   this.userAttributes = await fetchUserAttributes();
 })
-export class LobbyComponent {
+export class LobbyComponent implements OnInit {
   user: AuthUser | null = null;
   userAttributes: Partial<Record<UserAttributeKey, string>> | null = null;
 
   dataSource: GamesDataSource;
-  displayedColumns = ["name", "owner", "createdAt", "state"];
+  displayedColumns = ['name', 'owner', 'createdAt', 'state'];
 
-  constructor(private readonly userService: UserService,
-    private readonly gamesService: GamesService,
-    private readonly router: Router) {
+  private readonly userService = inject(UserService);
+  private readonly gamesService = inject(GamesService);
+  private readonly router = inject(Router);
+
+  constructor() {
     this.dataSource = new GamesDataSource(this.gamesService);
   }
 
@@ -92,8 +94,8 @@ export class LobbyComponent {
         filter: {
           profileOwner: {
             beginsWith: this.user?.userId,
-          }
-        }
+          },
+        },
       });
       if (errors) {
         console.error('Error fetching user:', errors);
@@ -114,12 +116,15 @@ export class LobbyComponent {
         console.error('User profile not found');
         return;
       }
-      client.models.User.update({
-        id: user.id,
-        gameId: id,
-      }, {
-        authMode: 'userPool',
-      });
+      client.models.User.update(
+        {
+          id: user.id,
+          gameId: id,
+        },
+        {
+          authMode: 'userPool',
+        }
+      );
       this.router.navigate(['/game', id]);
     } catch (error) {
       console.error('error joining game', error);
@@ -132,16 +137,18 @@ export class LobbyComponent {
       return;
     }
     try {
-      const game = await client.models.Game.create({
-        name: window.prompt('Game name')!,
-        hostedBy: this.userAttributes?.nickname ?? 'unknown',
-        state: 'joinable'
-      },
-      {
-        authMode: 'userPool'
-      });
-      if (game.data?.id) {
-        this.joinGame(game.data?.id);
+      const game = await client.models.Game.create(
+        {
+          name: window.prompt('Game name') ?? 'Untitled Game',
+          hostedBy: this.userAttributes?.nickname ?? 'unknown',
+          state: 'joinable',
+        },
+        {
+          authMode: 'userPool',
+        }
+      );
+      if (game.data && 'id' in game.data && typeof game.data.id === 'string') {
+        await this.joinGame(game.data.id);
       }
     } catch (error) {
       console.error('error creating games', error);
@@ -149,17 +156,19 @@ export class LobbyComponent {
   }
 
   deleteGame(id: string) {
-    client.models.Game.update({
-      id,
-      state: 'finished'
-    }, {
-      authMode: 'userPool',
-    })
+    client.models.Game.update(
+      {
+        id,
+        state: 'finished',
+      },
+      {
+        authMode: 'userPool',
+      }
+    );
   }
 
-  onRowClicked(game: any) {
+  onRowClicked(game: Game) {
     this.router.navigate(['/game', game.id]);
-    console.log('Row clicked:', game);
+    console.warn('Row clicked:', game);
   }
-
 }
