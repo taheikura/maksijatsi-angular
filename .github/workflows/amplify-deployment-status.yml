@@ -36,6 +36,7 @@ jobs:
       id-token: write
       contents: read
       pull-requests: write
+      issues: write
     steps:
       - name: Configure AWS CLI
         uses: aws-actions/configure-aws-credentials@v4
@@ -84,12 +85,29 @@ jobs:
                   echo "Job details:"
                   echo "$JOB_DETAILS" | jq -r '.steps[] | select(.status == "FAILED") | "Step: \(.stepName), Status: \(.status), Log: \(.logUrl // "No log URL")"'
                   
+                  # Get the log URL and fetch actual build logs
+                  LOG_URL=$(echo "$JOB_DETAILS" | jq -r '.steps[] | select(.status == "FAILED") | .logUrl // empty' | head -1)
+                  
+                  if [ -n "$LOG_URL" ]; then
+                    echo "Fetching build logs from: $LOG_URL"
+                    BUILD_LOG=$(curl -s "$LOG_URL" | tail -50)
+                    echo "=== BUILD LOG (last 50 lines) ==="
+                    echo "$BUILD_LOG"
+                    echo "=== END BUILD LOG ==="
+                    
+                    # Save log for PR comment
+                    echo "LOG_CONTENT<<EOF" >> $GITHUB_OUTPUT
+                    echo "$BUILD_LOG" >> $GITHUB_OUTPUT
+                    echo "EOF" >> $GITHUB_OUTPUT
+                  fi
+                  
                   # Try to get the actual error message
                   ERROR_MSG=$(echo "$JOB_DETAILS" | jq -r '.steps[] | select(.status == "FAILED") | .statusReason // "No error message available"')
                   echo "Error details: $ERROR_MSG"
                 fi
                 
-                exit 0
+                # Fail the pipeline for deployment failures
+                exit 1
               fi
             fi
             
@@ -98,9 +116,13 @@ jobs:
           done
           
           echo "status=TIMEOUT" >> $GITHUB_OUTPUT
+          echo "LOG_CONTENT=Deployment monitoring timed out after 10 minutes" >> $GITHUB_OUTPUT
           echo "Deployment monitoring timed out"
+          # Fail the pipeline for timeouts
+          exit 1
 
       - name: Find and update related PR
+        if: always()
         uses: actions/github-script@v7
         with:
           script: |
@@ -137,14 +159,34 @@ jobs:
                 console.log('Pending label not found or already removed');
               }
               
-              // Add final status label
+              // Add final status label and handle failures
               let label;
               if (status === 'SUCCESS') {
                 label = 'deployment:success';
               } else if (status === 'FAILED') {
                 label = 'deployment:failed';
+                
+                // Reopen the PR for failed deployments
+                await github.rest.pulls.update({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: mergedPR.number,
+                  state: 'open'
+                });
+                
+                console.log(`Reopened PR #${mergedPR.number} due to deployment failure`);
               } else {
                 label = 'deployment:timeout';
+                
+                // Reopen the PR for timeouts too
+                await github.rest.pulls.update({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: mergedPR.number,
+                  state: 'open'
+                });
+                
+                console.log(`Reopened PR #${mergedPR.number} due to deployment timeout`);
               }
               
               await github.rest.issues.addLabels({
@@ -157,12 +199,24 @@ jobs:
               console.log(`Added label: ${label}`);
               
               // Add comment with deployment details if failed
-              if (status === 'FAILED') {
+              if (status === 'FAILED' || status === 'TIMEOUT') {
+                const logContent = `${{ steps.deployment-status.outputs.LOG_CONTENT }}`;
+                let body = status === 'FAILED' 
+                  ? '🚨 **Deployment Failed**\n\nThe deployment to AWS Amplify failed.'
+                  : '⏰ **Deployment Timeout**\n\nThe deployment monitoring timed out after 10 minutes.';
+                
+                if (logContent && logContent.trim()) {
+                  body += '\n\n**Build Log (last 50 lines):**\n```\n' + logContent + '\n```';
+                }
+                
+                body += '\n\n**This PR has been reopened** to allow for fixes. Please address the deployment issues and merge again.';
+                body += '\n\nCheck the [Amplify Console](https://console.aws.amazon.com/amplify/) for complete logs and build information.';
+                
                 await github.rest.issues.createComment({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   issue_number: mergedPR.number,
-                  body: '🚨 **Deployment Failed**\n\nThe deployment to AWS Amplify failed. Check the [Amplify Console](https://console.aws.amazon.com/amplify/) for detailed error logs and build information.'
+                  body: body
                 });
               }
             } else {
