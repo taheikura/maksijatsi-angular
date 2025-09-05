@@ -92,11 +92,12 @@ export class GameComponent implements OnInit {
     'Pari',
     'Kaksi paria',
     'Kolme paria',
-    'Kolme samaa',
-    'Neljä samaa',
-    'Viisi samaa',
+    'Kolmiluku',
+    'Neliluku',
+    'Viisiluku',
     'Pieni suora',
     'Iso suora',
+    'Täysi suora',
     'Täyskäsi',
     'Superkäsi',
     'Torni',
@@ -138,26 +139,30 @@ export class GameComponent implements OnInit {
         );
 
         // Cleanup empty game if this was the last player
-        if (this.gameId) {
-          try {
-            const dc = this.client as typeof this.client & {
-              mutations?: {
-                cleanupEmptyGames?: (args: { gameId: string }) => Promise<unknown>;
-              };
-            };
-            if (dc.mutations?.cleanupEmptyGames) {
-              await dc.mutations.cleanupEmptyGames({ gameId: this.gameId });
-            }
-          } catch (cleanupError) {
-            console.error('Virhe tyhjän pelin siivoamisessa:', cleanupError);
-          }
-        }
+        await this.cleanupEmptyGame();
       }
     } catch (error) {
       console.error('Virhe gameId:n tyhjentämisessä', error);
     } finally {
       // Always navigate to lobby
       this.router.navigate(['/home']);
+    }
+  }
+
+  private async cleanupEmptyGame(): Promise<void> {
+    if (!this.gameId) return;
+
+    try {
+      const dc = this.client as typeof this.client & {
+        mutations?: {
+          cleanupEmptyGames?: (args: { gameId: string }) => Promise<unknown>;
+        };
+      };
+      if (dc.mutations?.cleanupEmptyGames) {
+        await dc.mutations?.cleanupEmptyGames({ gameId: this.gameId });
+      }
+    } catch (cleanupError) {
+      console.error('Virhe tyhjän pelin siivoamisessa:', cleanupError);
     }
   }
 
@@ -219,8 +224,8 @@ export class GameComponent implements OnInit {
     this.controls.target.set(0, 0, 0);
 
     const setRendererSize = () => {
-      const w = canvasEl.clientWidth || window.innerWidth;
-      const h = canvasEl.clientHeight || window.innerHeight;
+      const w = canvasEl?.clientWidth || window.innerWidth;
+      const h = canvasEl?.clientHeight || window.innerHeight;
       this.renderer.setSize(w, h, false);
       this.camera.aspect = w / h;
       this.camera.updateProjectionMatrix();
@@ -293,41 +298,58 @@ export class GameComponent implements OnInit {
     }
 
     for (let i = 0; i < 6; i++) {
-      let mesh: THREE.Mesh;
+      const mesh = this.createDiceMesh(diceModel, i);
+      const body = this.createDiceBody(diceShape, i);
 
-      if (diceModel) {
-        // Clone the loaded model
-        const clonedModel = diceModel.clone();
-        clonedModel.scale.setScalar(0.5); // Scale down to match original cube size
-        clonedModel.traverse((child) => {
-          if (child instanceof THREE.Mesh) {
-            child.castShadow = true;
-            child.receiveShadow = true;
-          }
-        });
-        mesh = clonedModel as unknown as THREE.Mesh;
-      } else {
-        // Fallback to cube
-        const geometry = new THREE.BoxGeometry(1, 1, 1);
-        const material = new THREE.MeshStandardMaterial({ color: 0xffffff });
-        mesh = new THREE.Mesh(geometry, material);
-        mesh.castShadow = true;
-      }
-
-      mesh.position.set(0 + i * 1.2 - 3.6, 1 + i * 0.1, 0);
       this.scene.add(mesh);
       this.diceMeshes.push(mesh);
-
-      const body = new CANNON.Body({
-        mass: 1,
-        shape: diceShape,
-        position: new CANNON.Vec3(0, 5.5 + i, 0),
-      });
-      body.sleepSpeedLimit = 0.1;
-      body.sleepTimeLimit = 1;
       this.world.addBody(body);
       this.diceBodies.push(body);
     }
+  }
+
+  private createDiceMesh(diceModel: THREE.Group | null, index: number): THREE.Mesh {
+    let mesh: THREE.Mesh;
+
+    if (diceModel) {
+      mesh = this.createModelMesh(diceModel);
+    } else {
+      mesh = this.createFallbackMesh();
+    }
+
+    mesh.position.set(0 + index * 1.2 - 3.6, 1 + index * 0.1, 0);
+    return mesh;
+  }
+
+  private createModelMesh(diceModel: THREE.Group): THREE.Mesh {
+    const clonedModel = diceModel.clone();
+    clonedModel.scale.setScalar(0.5); // Scale down to match original cube size
+    clonedModel.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+      }
+    });
+    return clonedModel as unknown as THREE.Mesh;
+  }
+
+  private createFallbackMesh(): THREE.Mesh {
+    const geometry = new THREE.BoxGeometry(1, 1, 1);
+    const material = new THREE.MeshStandardMaterial({ color: 0xffffff });
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.castShadow = true;
+    return mesh;
+  }
+
+  private createDiceBody(diceShape: CANNON.Box, index: number): CANNON.Body {
+    const body = new CANNON.Body({
+      mass: 1,
+      shape: diceShape,
+      position: new CANNON.Vec3(0, 5.5 + index, 0),
+    });
+    body.sleepSpeedLimit = 0.1;
+    body.sleepTimeLimit = 1;
+    return body;
   }
 
   private async loadGame(id: string) {
@@ -357,7 +379,7 @@ export class GameComponent implements OnInit {
 
       // Set ready state based on game state
       this.players.forEach((p) => {
-        const isReady = this.gameState === 'ongoing' ? true : false;
+        const isReady = this.gameState === 'ongoing';
         this.readyState.set(p.id, isReady);
       });
 
@@ -398,7 +420,7 @@ export class GameComponent implements OnInit {
   private extractUsername(me: unknown): string | undefined {
     if (!me || typeof me !== 'object') return undefined;
     const asObj = me as Record<string, unknown>;
-    if (typeof asObj['username'] === 'string') return asObj['username'] as string;
+    if (typeof asObj['username'] === 'string') return asObj['username'];
     return undefined;
   }
 
@@ -407,8 +429,8 @@ export class GameComponent implements OnInit {
     const asObj = me as Record<string, unknown>;
     const attrs = asObj['attributes'] as Record<string, unknown> | undefined;
     if (attrs) {
-      if (typeof attrs['nickname'] === 'string') return attrs['nickname'] as string;
-      if (typeof attrs['name'] === 'string') return attrs['name'] as string;
+      if (typeof attrs['nickname'] === 'string') return attrs['nickname'];
+      if (typeof attrs['name'] === 'string') return attrs['name'];
     }
     return undefined;
   }
@@ -923,41 +945,109 @@ export class GameComponent implements OnInit {
     const counts = [0, 0, 0, 0, 0, 0, 0]; // index 0 unused, 1-6 for dice values
     dice.forEach((die) => counts[die]++);
 
+    return this.getScoreForCategory(category, counts, dice);
+  }
+
+  private getScoreForCategory(category: string, counts: number[], dice: number[]): number {
+    if (this.isUpperSection(category)) {
+      return this.calculateUpperSection(category, counts);
+    }
+
+    return this.calculateLowerSection(category, counts, dice);
+  }
+
+  private isUpperSection(category: string): boolean {
+    return ['Ykköset', 'Kakkoset', 'Kolmoset', 'Neloset', 'Vitoset', 'Kutoset'].includes(category);
+  }
+
+  private calculateUpperSection(category: string, counts: number[]): number {
+    const valueMap: Record<string, number> = {
+      Ykköset: 1,
+      Kakkoset: 2,
+      Kolmoset: 3,
+      Neloset: 4,
+      Vitoset: 5,
+      Kutoset: 6,
+    };
+    const value = valueMap[category];
+    return counts[value] * value;
+  }
+
+  private calculateLowerSection(category: string, counts: number[], dice: number[]): number {
+    const pairCategories = ['Pari', 'Kaksi paria', 'Kolme paria'];
+    const kindCategories = ['Kolmiluku', 'Neliluku', 'Viisiluku'];
+    const straightCategories = ['Pieni suora', 'Iso suora', 'Täysi suora'];
+    const houseCategories = ['Täyskäsi', 'Superkäsi', 'Torni'];
+
+    if (pairCategories.includes(category)) {
+      return this.calculatePairCategory(category, counts);
+    }
+    if (kindCategories.includes(category)) {
+      return this.calculateKindCategory(category, counts);
+    }
+    if (straightCategories.includes(category)) {
+      return this.calculateStraightCategory(category, dice);
+    }
+    if (houseCategories.includes(category)) {
+      return this.calculateHouseCategory(category, counts);
+    }
+    return this.calculateSpecialCategory(category, counts, dice);
+  }
+
+  private calculatePairCategory(category: string, counts: number[]): number {
     switch (category) {
-      case 'Ykköset':
-        return counts[1] * 1;
-      case 'Kakkoset':
-        return counts[2] * 2;
-      case 'Kolmoset':
-        return counts[3] * 3;
-      case 'Neloset':
-        return counts[4] * 4;
-      case 'Vitoset':
-        return counts[5] * 5;
-      case 'Kutoset':
-        return counts[6] * 6;
       case 'Pari':
         return this.findPair(counts);
       case 'Kaksi paria':
         return this.findTwoPairs(counts);
       case 'Kolme paria':
         return this.findThreePairs(counts);
-      case 'Kolme samaa':
+      default:
+        return 0;
+    }
+  }
+
+  private calculateKindCategory(category: string, counts: number[]): number {
+    switch (category) {
+      case 'Kolmiluku':
         return this.findOfAKind(counts, 3);
-      case 'Neljä samaa':
+      case 'Neliluku':
         return this.findOfAKind(counts, 4);
-      case 'Viisi samaa':
+      case 'Viisiluku':
         return this.findOfAKind(counts, 5);
+      default:
+        return 0;
+    }
+  }
+
+  private calculateStraightCategory(category: string, dice: number[]): number {
+    switch (category) {
       case 'Pieni suora':
         return this.findSmallStraight(dice) ? 15 : 0;
       case 'Iso suora':
         return this.findLargeStraight(dice) ? 20 : 0;
+      case 'Täysi suora':
+        return this.findFullStraight(dice) ? 25 : 0;
+      default:
+        return 0;
+    }
+  }
+
+  private calculateHouseCategory(category: string, counts: number[]): number {
+    switch (category) {
       case 'Täyskäsi':
         return this.findFullHouse(counts);
       case 'Superkäsi':
         return this.findSuperHouse(counts);
       case 'Torni':
         return this.findTower(counts);
+      default:
+        return 0;
+    }
+  }
+
+  private calculateSpecialCategory(category: string, counts: number[], dice: number[]): number {
+    switch (category) {
       case 'Sattuma':
         return dice.reduce((sum, die) => sum + die, 0);
       case 'Maxi Jatsi':
@@ -998,33 +1088,36 @@ export class GameComponent implements OnInit {
   }
 
   private findSmallStraight(dice: number[]): boolean {
-    const unique = [...new Set(dice)].sort();
-    return (
-      (unique.length >= 4 &&
-        unique.includes(1) &&
-        unique.includes(2) &&
-        unique.includes(3) &&
-        unique.includes(4)) ||
-      (unique.includes(2) && unique.includes(3) && unique.includes(4) && unique.includes(5)) ||
-      (unique.includes(3) && unique.includes(4) && unique.includes(5) && unique.includes(6))
-    );
+    const unique = [...new Set(dice)].sort((a, b) => a - b);
+    if (unique.length < 4) return false;
+
+    return this.hasConsecutiveSequence(unique, 4);
+  }
+
+  private hasConsecutiveSequence(sortedUnique: number[], length: number): boolean {
+    for (let i = 0; i <= sortedUnique.length - length; i++) {
+      let consecutive = true;
+      for (let j = 1; j < length; j++) {
+        if (sortedUnique[i + j] !== sortedUnique[i] + j) {
+          consecutive = false;
+          break;
+        }
+      }
+      if (consecutive) return true;
+    }
+    return false;
   }
 
   private findLargeStraight(dice: number[]): boolean {
-    const unique = [...new Set(dice)].sort();
-    return (
-      unique.length >= 5 &&
-      ((unique.includes(1) &&
-        unique.includes(2) &&
-        unique.includes(3) &&
-        unique.includes(4) &&
-        unique.includes(5)) ||
-        (unique.includes(2) &&
-          unique.includes(3) &&
-          unique.includes(4) &&
-          unique.includes(5) &&
-          unique.includes(6)))
-    );
+    const unique = [...new Set(dice)].sort((a, b) => a - b);
+    if (unique.length < 5) return false;
+
+    return this.hasConsecutiveSequence(unique, 5);
+  }
+
+  private findFullStraight(dice: number[]): boolean {
+    const unique = [...new Set(dice)].sort((a, b) => a - b);
+    return unique.length === 6 && unique.every((val, idx) => val === idx + 1);
   }
 
   private findFullHouse(counts: number[]): number {
