@@ -1,3 +1,119 @@
-<canvas #canvas></canvas>
-<button type="button" (click)="rollDice()">Roll dice</button>
-<button type="button" (click)="backClicked()">Go Back</button>
+<div class="game-root">
+  <section class="scene" aria-label="3D playfield">
+    <canvas #canvas></canvas>
+  </section>
+
+  <aside class="overlay scoresheet" aria-label="tuloskortti">
+    <div class="scoresheet-header">
+      <h3>Tuloskortti</h3>
+      <button type="button" (click)="toggleScoreView()">
+        {{ showAllPlayers ? 'Vain minun' : 'Kaikki pelaajat' }}
+      </button>
+    </div>
+
+    @if (showScoreSelection) {
+      <div class="score-selection">
+        <h4>Valitse pisteet:</h4>
+        @for (option of scoreOptions; track option.category) {
+          <button type="button" class="score-option" (click)="selectScore(option.category, option.score)">
+            {{ option.category }}: {{ option.score }}
+          </button>
+        }
+      </div>
+    } @else {
+      <div class="scoresheet-grid">
+        @if (showAllPlayers) {
+          <div class="score-header">
+            <span>Kategoria</span>
+            @for (player of players; track player.id) {
+              <span>{{ player.name }}</span>
+            }
+          </div>
+          @for (category of getVisibleCategories(); track category) {
+            <div class="score-row">
+              <span class="category-name">{{ category }}</span>
+              @for (player of players; track player.id) {
+                <span class="score-value">
+                  {{ getPlayerScore(player.id, category) ?? '-' }}
+                </span>
+              }
+            </div>
+          }
+        } @else {
+          @for (category of getVisibleCategories(); track category) {
+            <div class="score-row">
+              <span class="category-name">{{ category }}</span>
+              <span class="score-value">
+                {{ getCurrentPlayerScore(category) ?? '-' }}
+              </span>
+            </div>
+          }
+        }
+      </div>
+    }
+  </aside>
+
+  <aside class="overlay players" aria-label="pelaajat">
+    <h3>Pelaajat</h3>
+    <ul>
+      @for (p of players; track p.id) {
+        <li>
+          <div class="player-left">
+            <span class="ready-indicator" [class.ready]="readyState.get(p.id)" aria-hidden="true"></span>
+            <span class="player-name">{{ p.name }}</span>
+            <span class="sr-only">{{ readyState.get(p.id) ? 'Valmis' : 'Ei valmis' }}</span>
+          </div>
+          <div class="player-right">
+            <button type="button" (click)="toggleReady(p.id)">
+              {{ readyState.get(p.id) ? 'Ei valmis' : 'Valmis' }}
+            </button>
+          </div>
+        </li>
+      }
+    </ul>
+  </aside>
+
+  <div class="overlay controls bottom-center" aria-hidden="false">
+    @if (gameState === 'ongoing') {
+      <div class="game-controls">
+        <div class="turn-info">
+          <span>Vuoro: {{ getCurrentPlayerName() }}</span>
+          <span>Heitto {{ getCurrentThrow() }}/3</span>
+        </div>
+        @if (keptDiceValues.size > 0) {
+          <div class="kept-dice">
+            <span>Pidetyt nopat:</span>
+            <div class="dice-display">
+              @for (entry of getKeptDiceArray(); track entry.index) {
+                <span class="kept-die">{{ entry.value }}</span>
+              }
+            </div>
+          </div>
+        }
+        @if (diceValues.length > 0) {
+          <div class="dice-selection">
+            <span>Valitse pidettävät nopat (klikkaa noppaa):</span>
+            <div class="dice-buttons">
+              @for (value of diceValues; track $index) {
+                <button type="button" [class.kept]="keptDiceValues.has($index)" (click)="toggleKeepDie($index)">
+                  {{ value }}
+                </button>
+              }
+            </div>
+          </div>
+        }
+        <div class="action-buttons">
+          <button type="button" [disabled]="!canRoll()" (click)="rollDice()">
+            Heitä{{ keptDiceValues.size > 0 ? ' uudelleen' : '' }}
+          </button>
+          <button type="button" [disabled]="diceValues.length === 0" (click)="endTurnWithScore()">Lopeta vuoro</button>
+        </div>
+      </div>
+    } @else {
+      @if ((countdown$ | async) !== null) {
+        <div>Aloitus: {{ countdown$ | async }}s</div>
+      }
+    }
+    <button type="button" (click)="quit()">Poistu</button>
+  </div>
+</div>

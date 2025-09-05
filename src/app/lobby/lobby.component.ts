@@ -1,18 +1,18 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 
-import { generateClient } from 'aws-amplify/data';
-import type { Schema } from '../../../amplify/data/resource';
-import { AuthUser, fetchUserAttributes, UserAttributeKey } from 'aws-amplify/auth';
-import { PreloadData } from './preload.decorator';
-import { UserService } from '../user.service';
+import { CollectionViewer, DataSource } from '@angular/cdk/collections';
+import { AsyncPipe, CommonModule } from '@angular/common';
 import { MatPaginatorModule } from '@angular/material/paginator';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTableModule } from '@angular/material/table';
-import { GamesService } from './games.service';
-import { CollectionViewer, DataSource } from '@angular/cdk/collections';
-import { BehaviorSubject, Observable } from 'rxjs';
-import { AsyncPipe } from '@angular/common';
 import { Router } from '@angular/router';
+import { AuthUser, fetchUserAttributes, UserAttributeKey } from 'aws-amplify/auth';
+import { generateClient } from 'aws-amplify/data';
+import { BehaviorSubject, Observable } from 'rxjs';
+import type { Schema } from '../../../amplify/data/resource';
+import { UserService } from '../user.service';
+import { GamesService } from './games.service';
+import { PreloadData } from './preload.decorator';
 
 const client = generateClient<Schema>();
 
@@ -44,8 +44,21 @@ export class GamesDataSource implements DataSource<Game> {
         this.gamesSubject.next([]);
         return;
       }
-      // Assuming result.data contains the games array
-      this.gamesSubject.next(result.data || []);
+
+      // Filter out empty games
+      const games = result.data || [];
+      const gamesWithPlayers = [];
+
+      for (const game of games) {
+        const usersResult = await client.models.User.list({
+          filter: { gameId: { eq: game.id } },
+        });
+        if (usersResult.data && usersResult.data.length > 0) {
+          gamesWithPlayers.push(game);
+        }
+      }
+
+      this.gamesSubject.next(gamesWithPlayers);
     } catch (error) {
       console.error('Error loading games:', error);
       this.gamesSubject.next([]);
@@ -61,7 +74,8 @@ export class GamesDataSource implements DataSource<Game> {
 
 @Component({
   selector: 'app-lobby',
-  imports: [MatTableModule, MatPaginatorModule, MatProgressSpinnerModule, AsyncPipe],
+  standalone: true,
+  imports: [CommonModule, MatTableModule, MatPaginatorModule, MatProgressSpinnerModule, AsyncPipe],
   templateUrl: `lobby.component.html`,
   styleUrl: './lobby.component.css',
 })
@@ -90,7 +104,7 @@ export class LobbyComponent implements OnInit {
 
   async getUserProfile() {
     try {
-      const { data, errors } = await client.models.User.list({
+      const { data, errors } = await client.models['User']['list']({
         filter: {
           profileOwner: {
             beginsWith: this.user?.userId,
@@ -113,10 +127,31 @@ export class LobbyComponent implements OnInit {
     try {
       const user = await this.getUserProfile();
       if (!user) {
-        console.error('User profile not found');
+        console.error('Käyttäjäprofiilia ei löytynyt');
         return;
       }
-      client.models.User.update(
+      // Fetch the game to ensure it is joinable
+      // fetch single game by filtering the list for the id (Data client doesn't expose a typed .get() in all codegen variants)
+      const gameResult = await client.models['Game']['list']({ filter: { id: { eq: id } } });
+      const game =
+        Array.isArray(gameResult.data) && gameResult.data.length > 0
+          ? gameResult.data[0]
+          : undefined;
+      if (!game) {
+        console.error('Peliä ei löytynyt');
+        return;
+      }
+      if (game.state !== 'joinable') {
+        // allow rejoin if user was already in this game (e.g. reconnect)
+        if (game.state === 'ongoing' && user.gameId === id) {
+          // allow rejoin
+        } else {
+          console.warn('Ei voi liittyä: peli ei ole liittyvässä tilassa');
+          return;
+        }
+      }
+
+      await client.models['User']['update'](
         {
           id: user.id,
           gameId: id,
@@ -133,30 +168,35 @@ export class LobbyComponent implements OnInit {
 
   async createGame() {
     if (!this.user) {
-      console.error('User not authenticated');
+      console.error('Käyttäjä ei ole kirjautunut');
       return;
     }
     try {
-      const game = await client.models.Game.create(
-        {
-          name: window.prompt('Game name') ?? 'Untitled Game',
-          hostedBy: this.userAttributes?.nickname ?? 'unknown',
-          state: 'joinable',
-        },
-        {
-          authMode: 'userPool',
-        }
+      const name = window.prompt('Pelin nimi') ?? 'Nimeämätön peli';
+      const host = this.getHostName();
+
+      const game = await client.models['Game']['create'](
+        { name, hostedBy: host, state: 'joinable' },
+        { authMode: 'userPool' }
       );
-      if (game.data && 'id' in game.data && typeof game.data.id === 'string') {
-        await this.joinGame(game.data.id);
+
+      if (game?.data && typeof game.data === 'object' && game.data !== null && 'id' in game.data) {
+        const gameData = game.data as Record<string, unknown>;
+        if (typeof gameData['id'] === 'string') {
+          await this.joinGame(gameData['id']);
+        }
       }
     } catch (error) {
       console.error('error creating games', error);
     }
   }
 
+  private getHostName(): string {
+    return this.userAttributes?.nickname ?? 'unknown';
+  }
+
   deleteGame(id: string) {
-    client.models.Game.update(
+    client.models['Game']['update'](
       {
         id,
         state: 'finished',
@@ -169,6 +209,10 @@ export class LobbyComponent implements OnInit {
 
   onRowClicked(game: Game) {
     this.router.navigate(['/game', game.id]);
-    console.warn('Row clicked:', game);
+    console.warn('Riviä klikattu:', game);
+  }
+
+  viewProfile() {
+    this.router.navigate(['/profile']);
   }
 }

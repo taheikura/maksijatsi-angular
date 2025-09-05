@@ -6,3 +6,32 @@
   background-color: rgba(0, 0, 0, 0.05);
   cursor: pointer;
 }
+
+main {
+  padding: 16px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+.actions button {
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: #007bff;
+  color: white;
+  cursor: pointer;
+}
+
+.actions button:hover {
+  filter: brightness(0.95);
+}

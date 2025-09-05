@@ -3,6 +3,7 @@ import { postConfirmation } from "../auth/post-confirmation/resource";
 import { getScores } from '../functions/get-scores/resource';
 import { throwDice } from '../functions/throw-dice/resource';
 import { endTurn } from '../functions/end-turn/resource';
+import { cleanupEmptyGames } from '../functions/cleanup-empty-games/resource';
 
 const schema = a.schema({
   Game: a
@@ -36,9 +37,9 @@ const schema = a.schema({
     ]),
   ScoreType: a
     .customType({
-      type: a.enum(['Ones', 'Twos', 'Threes', 'Fours', 'Fives', 'Sixes', 'Pair', 'TwoPairs', 'ThreePairs',
-        'ThreeOfAKind', 'FourOfAKind', 'FiveOfAKind', 'SmallStraight', 'LargeStraight', 'FullStraight',
-        'FullHouse', 'Villa', 'Tower', 'Chance', 'MaxiYatzy' ]),
+      type: a.enum(['Ykkuset', 'Kakkoset', 'Kolmoset', 'Neloset', 'Vitoset', 'Kutoset', 'Pari', 'KaksiParia', 'KolmeParia',
+        'Kolmoset', 'Neloset', 'Vitoset', 'PieniSuora', 'IsoSuora', 'TaysiSuora',
+        'Tayskasi', 'Superkasi', 'Torni', 'Sattuma', 'MaxiJatsi' ]),
     }),
   Score: a
     .model({
@@ -103,12 +104,20 @@ const schema = a.schema({
   endTurn: a
     .mutation()
     .arguments({
-      scoreType: a.enum(['Ones', 'Twos', 'Threes', 'Fours', 'Fives', 'Sixes', 'Pair', 'TwoPairs', 'ThreePairs',
-        'ThreeOfAKind', 'FourOfAKind', 'FiveOfAKind', 'SmallStraight', 'LargeStraight', 'FullStraight',
-        'FullHouse', 'Villa', 'Tower', 'Chance', 'MaxiYatzy']),
+      scoreType: a.enum(['Ykkuset', 'Kakkoset', 'Kolmoset', 'Neloset', 'Vitoset', 'Kutoset', 'Pari', 'KaksiParia', 'KolmeParia',
+        'Kolmoset', 'Neloset', 'Vitoset', 'PieniSuora', 'IsoSuora', 'TaysiSuora',
+        'Tayskasi', 'Superkasi', 'Torni', 'Sattuma', 'MaxiJatsi']),
     })
     .returns(a.integer())
     .handler(a.handler.function(endTurn))
+    .authorization((allow) => [allow.authenticated()]),
+  cleanupEmptyGames: a
+    .mutation()
+    .arguments({
+      gameId: a.string().required(),
+    })
+    .returns(a.json())
+    .handler(a.handler.function(cleanupEmptyGames))
     .authorization((allow) => [allow.authenticated()]),
 }).authorization((allow) => [allow.resource(postConfirmation)]);
 

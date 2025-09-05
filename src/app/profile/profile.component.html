@@ -1,0 +1,29 @@
+<main>
+  <h1>Käyttäjäprofiili</h1>
+
+  <div class="profile-section">
+    <h2>Tilin tiedot</h2>
+    @if (userAttributes) {
+      <div class="info-grid">
+        <div class="info-item">
+          <span class="info-label">Sähköposti:</span>
+          <span>{{ userAttributes.email || 'Ei asetettu' }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Lempinimi:</span>
+          <span>{{ userAttributes.nickname || 'Ei asetettu' }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Sähköposti vahvistettu:</span>
+          <span>{{ userAttributes.email_verified === 'true' ? 'Kyllä' : 'Ei' }}</span>
+        </div>
+      </div>
+    } @else {
+      <p>Ladataan profiilin tietoja...</p>
+    }
+  </div>
+
+  <div class="actions">
+    <button type="button" (click)="goBack()">Takaisin aulaan</button>
+  </div>
+</main>

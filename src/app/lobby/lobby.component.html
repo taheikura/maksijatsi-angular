@@ -1,6 +1,11 @@
 <main>
-  <h1>Games</h1>
-  <button type="button" (click)="createGame()">+ new</button>
+  <div class="header">
+    <h1>Pelit</h1>
+    <div class="actions">
+      <button type="button" (click)="createGame()">+ Uusi</button>
+      <button type="button" (click)="viewProfile()">Profiili</button>
+    </div>
+  </div>
 
   <mat-table [dataSource]="dataSource" class="mat-elevation-z8">
     <ng-container matColumnDef="name">
