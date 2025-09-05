@@ -8,9 +8,16 @@ const client = generateClient<Schema>();
   providedIn: 'root',
 })
 export class GamesService {
-  findGames(filter?: Schema['Game']['type']['filter'], limit = 10, nextToken?: string) {
+  findGames(filter?: unknown, limit = 10, nextToken?: string) {
+    if (filter && typeof filter === 'object') {
+      return client.models['Game']['list']({
+        filter: filter as Record<string, unknown>,
+        limit,
+        nextToken,
+      });
+    }
+
     return client.models['Game']['list']({
-      filter,
       limit,
       nextToken,
     });

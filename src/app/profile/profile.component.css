@@ -1,0 +1,32 @@
+.profile-section {
+  margin: 20px 0;
+  padding: 20px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: white;
+}
+
+.info-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.info-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.info-item .info-label {
+  font-weight: 600;
+  color: #333;
+}
+
+.info-item span {
+  color: #666;
+}
+
+.actions {
+  margin-top: 20px;
+}
