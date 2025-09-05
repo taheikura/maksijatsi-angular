@@ -14,30 +14,18 @@ name: Amplify Deployment Status
       - main
 
 jobs:
-  # Block PR merging until deployment succeeds
-  deployment-gate:
+  # Label PRs as pending deployment (no blocking status)
+  label-pr:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
-      statuses: write
     steps:
-      - name: Set pending deployment status
+      - name: Add deployment pending label
         uses: actions/github-script@v7
         with:
           script: |
-            // Set a required status check that will block merging
-            await github.rest.repos.createCommitStatus({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              sha: context.payload.pull_request.head.sha,
-              state: 'pending',
-              target_url: 'https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}',
-              description: 'Deployment will be verified after merge',
-              context: 'amplify/deployment'
-            });
-            
-            // Add pending label
+            // Add pending label only - no blocking status
             await github.rest.issues.addLabels({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -45,9 +33,9 @@ jobs:
               labels: ['deployment:pending']
             });
 
-  # Track deployment and close PR only on success
+  # Track deployment after merge to main
   track-deployment:
-    if: github.event_name == 'pull_request_target' && github.event.action == 'closed' && github.event.pull_request.merged == true
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -162,7 +150,28 @@ jobs:
               pr.merge_commit_sha === context.sha
             );
             
-            const prNumber = context.payload.pull_request.number;
+            // Find the PR that was just merged
+            const { data: prs } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'closed',
+              sort: 'updated',
+              direction: 'desc',
+              per_page: 10
+            });
+            
+            // Find the most recently merged PR
+            const mergedPR = prs.find(pr => 
+              pr.merged_at && 
+              pr.merge_commit_sha === context.sha
+            );
+            
+            if (!mergedPR) {
+              console.log('No matching merged PR found');
+              return;
+            }
+            
+            const prNumber = mergedPR.number;
             console.log(`Processing deployment for PR #${prNumber}`);
             
             // Remove pending label
@@ -177,36 +186,11 @@ jobs:
               console.log('Pending label not found or already removed');
             }
               
-              // Update commit status and handle PR state
-              const prNumber = context.payload.pull_request.number;
-              const headSha = context.payload.pull_request.head.sha;
-              
+              // Handle PR state based on deployment result
               if (status === 'SUCCESS') {
-                // Deployment succeeded - allow PR to stay closed
-                await github.rest.repos.createCommitStatus({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  sha: headSha,
-                  state: 'success',
-                  target_url: 'https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}',
-                  description: 'Deployment successful',
-                  context: 'amplify/deployment'
-                });
-                
                 label = 'deployment:success';
               } else {
-                // Deployment failed - reopen PR and set failed status
-                await github.rest.repos.createCommitStatus({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  sha: headSha,
-                  state: 'failure',
-                  target_url: 'https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}',
-                  description: status === 'FAILED' ? 'Deployment failed' : 'Deployment timed out',
-                  context: 'amplify/deployment'
-                });
-                
-                // Reopen the PR
+                // Deployment failed - reopen the PR
                 await github.rest.pulls.update({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
