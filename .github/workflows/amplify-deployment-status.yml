@@ -62,21 +62,34 @@ jobs:
               # Get the most recent job
               LATEST_JOB=$(echo "$JOBS" | jq -r '.[0]')
               STATUS=$(echo "$LATEST_JOB" | jq -r '.status')
-              JOB_TYPE=$(echo "$LATEST_JOB" | jq -r '.jobType')
+              JOB_TYPE=$(echo "$LATEST_JOB" | jq -r '.jobType // "BUILD"')
+              JOB_ID=$(echo "$LATEST_JOB" | jq -r '.jobId')
               
-              echo "Latest job type: $JOB_TYPE, status: $STATUS"
+              echo "Latest job ID: $JOB_ID, type: $JOB_TYPE, status: $STATUS"
               
-              # Only consider RELEASE jobs (actual deployments)
-              if [ "$JOB_TYPE" = "RELEASE" ]; then
-                if [ "$STATUS" = "SUCCEED" ]; then
-                  echo "status=SUCCESS" >> $GITHUB_OUTPUT
-                  echo "Deployment successful!"
-                  exit 0
-                elif [ "$STATUS" = "FAILED" ] || [ "$STATUS" = "CANCELLED" ]; then
-                  echo "status=FAILED" >> $GITHUB_OUTPUT
-                  echo "Deployment failed with status: $STATUS"
-                  exit 0
+              # Check for completion (success or failure)
+              if [ "$STATUS" = "SUCCEED" ]; then
+                echo "status=SUCCESS" >> $GITHUB_OUTPUT
+                echo "Deployment successful!"
+                exit 0
+              elif [ "$STATUS" = "FAILED" ] || [ "$STATUS" = "CANCELLED" ]; then
+                echo "status=FAILED" >> $GITHUB_OUTPUT
+                echo "Deployment failed with status: $STATUS"
+                
+                # Get detailed error information
+                echo "Fetching job details for error information..."
+                JOB_DETAILS=$(aws amplify get-job --app-id ${{ secrets.AMPLIFY_APP_ID }} --branch-name main --job-id "$JOB_ID" --query 'job' --output json)
+                
+                if [ "$JOB_DETAILS" != "null" ]; then
+                  echo "Job details:"
+                  echo "$JOB_DETAILS" | jq -r '.steps[] | select(.status == "FAILED") | "Step: \(.stepName), Status: \(.status), Log: \(.logUrl // "No log URL")"'
+                  
+                  # Try to get the actual error message
+                  ERROR_MSG=$(echo "$JOB_DETAILS" | jq -r '.steps[] | select(.status == "FAILED") | .statusReason // "No error message available"')
+                  echo "Error details: $ERROR_MSG"
                 fi
+                
+                exit 0
               fi
             fi
             
@@ -142,6 +155,16 @@ jobs:
               });
               
               console.log(`Added label: ${label}`);
+              
+              // Add comment with deployment details if failed
+              if (status === 'FAILED') {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: mergedPR.number,
+                  body: '🚨 **Deployment Failed**\n\nThe deployment to AWS Amplify failed. Check the [Amplify Console](https://console.aws.amazon.com/amplify/) for detailed error logs and build information.'
+                });
+              }
             } else {
               console.log('No matching merged PR found');
             }
