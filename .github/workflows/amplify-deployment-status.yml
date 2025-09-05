@@ -5,14 +5,18 @@ name: Amplify Deployment Status
     branches:
       - main
   pull_request:
-    types: [opened, synchronize, reopened, closed]
+    types: [opened, synchronize, reopened]
+    branches:
+      - main
+  pull_request_target:
+    types: [closed]
     branches:
       - main
 
 jobs:
-  # Label PRs as pending deployment
+  # Label PRs as pending deployment (no blocking status)
   label-pr:
-    if: github.event_name == 'pull_request' && github.event.action != 'closed'
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
@@ -21,6 +25,7 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
+            // Add pending label only - no blocking status
             await github.rest.issues.addLabels({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -28,7 +33,7 @@ jobs:
               labels: ['deployment:pending']
             });
 
-  # Track actual deployment after merge to main
+  # Track deployment after merge to main
   track-deployment:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
@@ -37,6 +42,7 @@ jobs:
       contents: read
       pull-requests: write
       issues: write
+      statuses: write
     steps:
       - name: Configure AWS CLI
         uses: aws-actions/configure-aws-credentials@v4
@@ -144,55 +150,62 @@ jobs:
               pr.merge_commit_sha === context.sha
             );
             
-            if (mergedPR) {
-              console.log(`Found merged PR #${mergedPR.number}`);
+            // Find the PR that was just merged
+            const { data: prs } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'closed',
+              sort: 'updated',
+              direction: 'desc',
+              per_page: 10
+            });
+            
+            // Find the most recently merged PR
+            const mergedPR = prs.find(pr => 
+              pr.merged_at && 
+              pr.merge_commit_sha === context.sha
+            );
+            
+            if (!mergedPR) {
+              console.log('No matching merged PR found');
+              return;
+            }
+            
+            const prNumber = mergedPR.number;
+            console.log(`Processing deployment for PR #${prNumber}`);
+            
+            // Remove pending label
+            try {
+              await github.rest.issues.removeLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                name: 'deployment:pending'
+              });
+            } catch (error) {
+              console.log('Pending label not found or already removed');
+            }
               
-              // Remove pending label
-              try {
-                await github.rest.issues.removeLabel({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  issue_number: mergedPR.number,
-                  name: 'deployment:pending'
-                });
-              } catch (error) {
-                console.log('Pending label not found or already removed');
-              }
-              
-              // Add final status label and handle failures
-              let label;
+              // Handle PR state based on deployment result
               if (status === 'SUCCESS') {
                 label = 'deployment:success';
-              } else if (status === 'FAILED') {
-                label = 'deployment:failed';
-                
-                // Reopen the PR for failed deployments
-                await github.rest.pulls.update({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  pull_number: mergedPR.number,
-                  state: 'open'
-                });
-                
-                console.log(`Reopened PR #${mergedPR.number} due to deployment failure`);
               } else {
-                label = 'deployment:timeout';
-                
-                // Reopen the PR for timeouts too
+                // Deployment failed - reopen the PR
                 await github.rest.pulls.update({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
-                  pull_number: mergedPR.number,
+                  pull_number: prNumber,
                   state: 'open'
                 });
                 
-                console.log(`Reopened PR #${mergedPR.number} due to deployment timeout`);
+                label = status === 'FAILED' ? 'deployment:failed' : 'deployment:timeout';
+                console.log(`Reopened PR #${prNumber} due to deployment ${status.toLowerCase()}`);
               }
               
               await github.rest.issues.addLabels({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                issue_number: mergedPR.number,
+                issue_number: prNumber,
                 labels: [label]
               });
               
@@ -215,10 +228,7 @@ jobs:
                 await github.rest.issues.createComment({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
-                  issue_number: mergedPR.number,
+                  issue_number: prNumber,
                   body: body
                 });
               }
-            } else {
-              console.log('No matching merged PR found');
-            }

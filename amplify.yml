@@ -1,6 +1,9 @@
 version: 1
 backend:
   phases:
+    preBuild:
+      commands:
+        - nvm use 20.19.0
     build:
       commands:
         - npm ci --cache .npm --prefer-offline
@@ -9,6 +12,7 @@ frontend:
   phases:
     preBuild:
       commands:
+        - nvm use 20.19.0
         - npx ng version
         # Install Chrome for Cypress in CI environment
         - apt-get update
