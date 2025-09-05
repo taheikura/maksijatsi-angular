@@ -22,7 +22,7 @@
     "prepare": "husky"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "private": true,
   "dependencies": {
@@ -81,7 +81,7 @@
     "typescript-eslint": "8.40.0"
   },
   "volta": {
-    "node": "20.19.0"
+    "node": "22.19.0"
   },
   "resolutions": {
     "@aws-sdk/types": "3.862.0"

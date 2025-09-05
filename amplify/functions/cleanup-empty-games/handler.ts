@@ -6,8 +6,8 @@ Amplify.configure(
   {
     API: {
       GraphQL: {
-        endpoint: process.env.AMPLIFY_DATA_GRAPHQL_ENDPOINT,
-        region: process.env.AWS_REGION,
+        endpoint: process.env.AMPLIFY_DATA_GRAPHQL_ENDPOINT!,
+        region: process.env.AWS_REGION!,
         defaultAuthMode: 'iam',
       },
     },
