@@ -5,6 +5,31 @@ import { endTurn } from '../functions/end-turn/resource';
 import { getScores } from '../functions/get-scores/resource';
 import { throwDice } from '../functions/throw-dice/resource';
 
+// Define score types enum once for reuse
+const scoreTypesEnum = a.enum([
+  'Ykköset',
+  'Kakkoset', 
+  'Kolmoset',
+  'Neloset',
+  'Vitoset',
+  'Kutoset',
+  'Bonus',
+  'Pari',
+  'Kaksi paria',
+  'Kolme paria', 
+  'Kolme samaa',
+  'Neljä samaa',
+  'Viisi samaa',
+  'Pieni suora',
+  'Iso suora',
+  'Täysi suora',
+  'Täyskäsi',
+  'Superkäsi',
+  'Torni',
+  'Sattuma',
+  'Maxi Jatsi',
+]);
+
 const schema = a
   .schema({
     Game: a
@@ -32,28 +57,7 @@ const schema = a
       .secondaryIndexes((index) => [index('profileOwner')])
       .authorization((allow) => [allow.ownerDefinedIn('profileOwner')]),
     ScoreType: a.customType({
-      type: a.enum([
-        'Ykkuset',
-        'Kakkoset',
-        'Kolmoset',
-        'Neloset',
-        'Vitoset',
-        'Kutoset',
-        'Pari',
-        'KaksiParia',
-        'KolmeParia',
-        'Kolmoset',
-        'Neloset',
-        'Vitoset',
-        'PieniSuora',
-        'IsoSuora',
-        'TaysiSuora',
-        'Tayskasi',
-        'Superkasi',
-        'Torni',
-        'Sattuma',
-        'MaxiJatsi',
-      ]),
+      type: scoreTypesEnum,
     }),
     Score: a
       .model({
@@ -114,28 +118,7 @@ const schema = a
     endTurn: a
       .mutation()
       .arguments({
-        scoreType: a.enum([
-          'Ykkuset',
-          'Kakkoset',
-          'Kolmoset',
-          'Neloset',
-          'Vitoset',
-          'Kutoset',
-          'Pari',
-          'KaksiParia',
-          'KolmeParia',
-          'Kolmoset',
-          'Neloset',
-          'Vitoset',
-          'PieniSuora',
-          'IsoSuora',
-          'TaysiSuora',
-          'Tayskasi',
-          'Superkasi',
-          'Torni',
-          'Sattuma',
-          'MaxiJatsi',
-        ]),
+        scoreType: scoreTypesEnum,
       })
       .returns(a.integer())
       .handler(a.handler.function(endTurn))
@@ -147,6 +130,15 @@ const schema = a
       })
       .returns(a.json())
       .handler(a.handler.function(cleanupEmptyGames))
+      .authorization((allow) => [allow.authenticated()]),
+    Message: a
+      .model({
+        content: a.string().required(),
+        senderName: a.string().required(),
+        contextType: a.enum(['lobby', 'game']),
+        contextId: a.string(),
+        timestamp: a.datetime().required(),
+      })
       .authorization((allow) => [allow.authenticated()]),
   })
   .authorization((allow) => [allow.resource(postConfirmation)]);

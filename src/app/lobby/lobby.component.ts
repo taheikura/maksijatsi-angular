@@ -7,14 +7,13 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTableModule } from '@angular/material/table';
 import { Router } from '@angular/router';
 import { AuthUser, fetchUserAttributes, UserAttributeKey } from 'aws-amplify/auth';
-import { generateClient } from 'aws-amplify/data';
 import { BehaviorSubject, Observable } from 'rxjs';
 import type { Schema } from '../../../amplify/data/resource';
+import { ChatComponent } from '../chat/chat.component';
+import { GraphqlClientService } from '../shared/graphql-client.service';
 import { UserService } from '../user.service';
 import { GamesService } from './games.service';
 import { PreloadData } from './preload.decorator';
-
-const client = generateClient<Schema>();
 
 type Game = Schema['Game']['type'];
 
@@ -22,7 +21,10 @@ export class GamesDataSource implements DataSource<Game> {
   private readonly gamesSubject = new BehaviorSubject<Game[]>([]);
   private readonly loadingSubject = new BehaviorSubject<boolean>(false);
 
-  constructor(private readonly gamesService: GamesService) {}
+  constructor(
+    private readonly gamesService: GamesService,
+    private readonly graphqlClient: GraphqlClientService
+  ) {}
 
   connect(_collectionViewer: CollectionViewer): Observable<Game[]> {
     return this.gamesSubject.asObservable();
@@ -40,24 +42,19 @@ export class GamesDataSource implements DataSource<Game> {
     try {
       const result = await this.gamesService.findGames(filter, limit, nextToken);
       if (result.errors) {
-        console.error('Error loading games:', result.errors);
+        console.error('Error loading games');
         this.gamesSubject.next([]);
         return;
       }
 
       // Filter out empty games
       const games = result.data || [];
-      const gamesWithPlayers = [];
 
-      for (const game of games) {
-        const usersResult = await client.models.User.list({
-          filter: { gameId: { eq: game.id } },
-        });
-        if (usersResult.data && usersResult.data.length > 0) {
-          gamesWithPlayers.push(game);
-        }
-      }
+      // Get all users in a single query to avoid N+1 problem
+      const usersResult = await this.graphqlClient.client.models.User.list();
+      const gameIds = new Set(usersResult.data?.map((user) => user.gameId).filter(Boolean) || []);
 
+      const gamesWithPlayers = games.filter((game) => gameIds.has(game.id));
       this.gamesSubject.next(gamesWithPlayers);
     } catch (error) {
       console.error('Error loading games:', error);
@@ -75,7 +72,14 @@ export class GamesDataSource implements DataSource<Game> {
 @Component({
   selector: 'app-lobby',
   standalone: true,
-  imports: [CommonModule, MatTableModule, MatPaginatorModule, MatProgressSpinnerModule, AsyncPipe],
+  imports: [
+    CommonModule,
+    MatTableModule,
+    MatPaginatorModule,
+    MatProgressSpinnerModule,
+    AsyncPipe,
+    ChatComponent,
+  ],
   templateUrl: `lobby.component.html`,
   styleUrl: './lobby.component.css',
 })
@@ -86,6 +90,7 @@ export class GamesDataSource implements DataSource<Game> {
 export class LobbyComponent implements OnInit {
   user: AuthUser | null = null;
   userAttributes: Partial<Record<UserAttributeKey, string>> | null = null;
+  lobbyPlayers: { id: string; name: string }[] = [];
 
   dataSource: GamesDataSource;
   displayedColumns = ['name', 'owner', 'createdAt', 'state'];
@@ -93,18 +98,44 @@ export class LobbyComponent implements OnInit {
   private readonly userService = inject(UserService);
   private readonly gamesService = inject(GamesService);
   private readonly router = inject(Router);
+  private readonly graphqlClient = inject(GraphqlClientService);
 
   constructor() {
-    this.dataSource = new GamesDataSource(this.gamesService);
+    this.dataSource = new GamesDataSource(this.gamesService, this.graphqlClient);
   }
 
   ngOnInit() {
     this.dataSource.loadGames();
+    this.loadLobbyPlayers();
+  }
+
+  async loadLobbyPlayers() {
+    try {
+      const { data } = await this.graphqlClient.client.models.User.list();
+
+      const uniqueUsers = new Map<string, Schema['User']['type']>();
+      data
+        .filter((user) => !user.gameId)
+        .forEach((user) => {
+          const key = user.profileOwner ?? user.id;
+          if (!uniqueUsers.has(key)) {
+            uniqueUsers.set(key, user);
+          }
+        });
+
+      this.lobbyPlayers = Array.from(uniqueUsers.values()).map((user) => ({
+        id: user.id,
+        name: user.name ?? user.profileOwner ?? 'Tuntematon',
+      }));
+    } catch (error) {
+      console.error('Error loading lobby players:', error);
+      this.lobbyPlayers = [];
+    }
   }
 
   async getUserProfile() {
     try {
-      const { data, errors } = await client.models['User']['list']({
+      const { data, errors } = await this.graphqlClient.client.models['User']['list']({
         filter: {
           profileOwner: {
             beginsWith: this.user?.userId,
@@ -132,7 +163,9 @@ export class LobbyComponent implements OnInit {
       }
       // Fetch the game to ensure it is joinable
       // fetch single game by filtering the list for the id (Data client doesn't expose a typed .get() in all codegen variants)
-      const gameResult = await client.models['Game']['list']({ filter: { id: { eq: id } } });
+      const gameResult = await this.graphqlClient.client.models['Game']['list']({
+        filter: { id: { eq: id } },
+      });
       const game =
         Array.isArray(gameResult.data) && gameResult.data.length > 0
           ? gameResult.data[0]
@@ -151,7 +184,7 @@ export class LobbyComponent implements OnInit {
         }
       }
 
-      await client.models['User']['update'](
+      await this.graphqlClient.client.models['User']['update'](
         {
           id: user.id,
           gameId: id,
@@ -175,7 +208,7 @@ export class LobbyComponent implements OnInit {
       const name = window.prompt('Pelin nimi') ?? 'Nimeämätön peli';
       const host = this.getHostName();
 
-      const game = await client.models['Game']['create'](
+      const game = await this.graphqlClient.client.models['Game']['create'](
         { name, hostedBy: host, state: 'joinable' },
         { authMode: 'userPool' }
       );
@@ -195,21 +228,24 @@ export class LobbyComponent implements OnInit {
     return this.userAttributes?.nickname ?? 'unknown';
   }
 
-  deleteGame(id: string) {
-    client.models['Game']['update'](
-      {
-        id,
-        state: 'finished',
-      },
-      {
-        authMode: 'userPool',
-      }
-    );
+  async deleteGame(id: string) {
+    try {
+      await this.graphqlClient.client.models['Game']['update'](
+        {
+          id,
+          state: 'finished',
+        },
+        {
+          authMode: 'userPool',
+        }
+      );
+    } catch (error) {
+      console.error('Error deleting game:', error);
+    }
   }
 
   onRowClicked(game: Game) {
     this.router.navigate(['/game', game.id]);
-    console.warn('Riviä klikattu:', game);
   }
 
   viewProfile() {

@@ -20,9 +20,9 @@ export const handler: Schema['throwDice']['functionHandler'] = async (event) => 
     const z = Math.sqrt(u1) * Math.cos(2 * Math.PI * u3);
 
     const position = {
-      x: (Math.random() * tableSize) / 10 + tableSize / 3.5,
-      y: Math.random() + dropHeight,
-      z: (Math.random() * tableSize) / 10 + tableSize / 3.5,
+      x: -6 + Math.random() * 2,
+      y: 4 + Math.random(),
+      z: -3 + Math.random() * 2,
     };
     const quaternion = {
       w,
@@ -31,14 +31,14 @@ export const handler: Schema['throwDice']['functionHandler'] = async (event) => 
       z,
     };
     const velocity = {
-      x: -Math.random() * maxVel - 6,
-      y: (-Math.random() * maxVel) / 2 - 5,
-      z: -Math.random() * maxVel - 6,
+      x: 4 + Math.random() * 2,
+      y: 2 + Math.random(),
+      z: 1 + Math.random(),
     };
     const angularVelocity = {
-      x: Math.random() * 50 - 25,
-      y: Math.random() * 50 - 25,
-      z: Math.random() * 50 - 25,
+      x: (Math.random() - 0.5) * 8,
+      y: (Math.random() - 0.5) * 8,
+      z: (Math.random() - 0.5) * 8,
     };
     dice.push({
       position,
