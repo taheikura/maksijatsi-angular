@@ -1,5 +1,5 @@
 import { type ClientSchema, a, defineData } from '@aws-amplify/backend';
-import { postConfirmation } from '../auth/post-confirmation/resource';
+// import { postConfirmation } from '../auth/post-confirmation/resource';
 import { cleanupEmptyGames } from '../functions/cleanup-empty-games/resource';
 import { endTurn } from '../functions/end-turn/resource';
 import { getScores } from '../functions/get-scores/resource';
@@ -45,7 +45,7 @@ const schema = a
         guestAccessEnabled: a.boolean().default(true),
       })
       .secondaryIndexes((index) => [index('state')])
-      .authorization((allow) => [allow.guest(), allow.authenticated()]),
+      .authorization((allow) => [allow.publicApiKey()]),
     User: a
       .model({
         profileOwner: a.string(),
@@ -58,7 +58,7 @@ const schema = a
         guestId: a.string(),
       })
       .secondaryIndexes((index) => [index('profileOwner'), index('guestId')])
-      .authorization((allow) => [allow.guest(), allow.authenticated(), allow.ownerDefinedIn('profileOwner')]),
+      .authorization((allow) => [allow.publicApiKey()]),
     ScoreType: a.customType({
       type: scoreTypesEnum,
     }),
@@ -72,14 +72,14 @@ const schema = a
         scoreSheetId: a.id().required(),
         scoreSheet: a.belongsTo('ScoreSheet', 'scoreSheetId'),
       })
-      .authorization((allow) => [allow.guest(), allow.authenticated()]),
+      .authorization((allow) => [allow.publicApiKey()]),
     ScoreSheet: a
       .model({
         gameId: a.id().required(),
         game: a.belongsTo('Game', 'gameId'),
         score: a.hasMany('Score', 'scoreSheetId'),
       })
-      .authorization((allow) => [allow.guest(), allow.authenticated()]),
+      .authorization((allow) => [allow.publicApiKey()]),
     getScores: a
       .query()
       .arguments({
@@ -87,7 +87,7 @@ const schema = a
       })
       .returns(a.json())
       .handler(a.handler.function(getScores))
-      .authorization((allow) => [allow.guest(), allow.authenticated()]),
+      .authorization((allow) => [allow.publicApiKey()]),
     DieVector3: a.customType({
       x: a.float(),
       y: a.float(),
@@ -117,7 +117,7 @@ const schema = a
       })
       .returns(a.ref('ThrowDiceResponse'))
       .handler(a.handler.function(throwDice))
-      .authorization((allow) => [allow.guest(), allow.authenticated()]),
+      .authorization((allow) => [allow.publicApiKey()]),
     endTurn: a
       .mutation()
       .arguments({
@@ -125,7 +125,7 @@ const schema = a
       })
       .returns(a.integer())
       .handler(a.handler.function(endTurn))
-      .authorization((allow) => [allow.guest(), allow.authenticated()]),
+      .authorization((allow) => [allow.publicApiKey()]),
     cleanupEmptyGames: a
       .mutation()
       .arguments({
@@ -133,7 +133,7 @@ const schema = a
       })
       .returns(a.json())
       .handler(a.handler.function(cleanupEmptyGames))
-      .authorization((allow) => [allow.guest(), allow.authenticated()]),
+      .authorization((allow) => [allow.publicApiKey()]),
     Message: a
       .model({
         content: a.string().required(),
@@ -143,16 +143,16 @@ const schema = a
         timestamp: a.datetime().required(),
         ttl: a.integer(),
       })
-      .authorization((allow) => [allow.guest(), allow.authenticated()]),
+      .authorization((allow) => [allow.publicApiKey()]),
   })
-  .authorization((allow) => [allow.resource(postConfirmation)]);
+  .authorization((allow) => [allow.publicApiKey()]);
 
 export type Schema = ClientSchema<typeof schema>;
 
 export const data = defineData({
   schema,
   authorizationModes: {
-    defaultAuthorizationMode: 'userPool',
+    defaultAuthorizationMode: 'apiKey',
   },
   logging: true,
 });
