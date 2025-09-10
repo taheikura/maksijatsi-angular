@@ -7,12 +7,12 @@ import { throwDice } from '../functions/throw-dice/resource';
 
 // Define score types enum once for reuse
 const scoreTypesEnum = a.enum([
-  'YKKYSET',
+  'YKKOSET',
   'KAKKOSET', 
   'KOLMOSET',
   'NELOSET',
-  'VITOSET',
-  'KUTOSET',
+  'VIITOSET',
+  'KUUTOSET',
   'BONUS',
   'PARI',
   'KAKSI_PARIA',
@@ -27,7 +27,7 @@ const scoreTypesEnum = a.enum([
   'SUPERKASI',
   'TORNI',
   'SATTUMA',
-  'MAXI_JATSI',
+  'MAKSIJATSI',
 ]);
 
 const schema = a
@@ -42,9 +42,10 @@ const schema = a
         whosTurnId: a.string(),
         whosTurn: a.belongsTo('User', 'whosTurnId'),
         turnNumber: a.enum(['first', 'second', 'third']),
+        guestAccessEnabled: a.boolean().default(true),
       })
       .secondaryIndexes((index) => [index('state')])
-      .authorization((allow) => [allow.authenticated().to(['create', 'read']), allow.owner()]),
+      .authorization((allow) => [allow.guest(), allow.authenticated()]),
     User: a
       .model({
         profileOwner: a.string(),
@@ -53,9 +54,11 @@ const schema = a
         game: a.belongsTo('Game', 'gameId'),
         gameTurn: a.hasOne('Game', 'whosTurnId'),
         scores: a.hasMany('Score', 'userId'),
+        isGuest: a.boolean().default(false),
+        guestId: a.string(),
       })
-      .secondaryIndexes((index) => [index('profileOwner')])
-      .authorization((allow) => [allow.ownerDefinedIn('profileOwner')]),
+      .secondaryIndexes((index) => [index('profileOwner'), index('guestId')])
+      .authorization((allow) => [allow.guest(), allow.authenticated(), allow.ownerDefinedIn('profileOwner')]),
     ScoreType: a.customType({
       type: scoreTypesEnum,
     }),
@@ -69,14 +72,14 @@ const schema = a
         scoreSheetId: a.id().required(),
         scoreSheet: a.belongsTo('ScoreSheet', 'scoreSheetId'),
       })
-      .authorization((allow) => [allow.authenticated()]),
+      .authorization((allow) => [allow.guest(), allow.authenticated()]),
     ScoreSheet: a
       .model({
         gameId: a.id().required(),
         game: a.belongsTo('Game', 'gameId'),
         score: a.hasMany('Score', 'scoreSheetId'),
       })
-      .authorization((allow) => [allow.authenticated()]),
+      .authorization((allow) => [allow.guest(), allow.authenticated()]),
     getScores: a
       .query()
       .arguments({
@@ -84,7 +87,7 @@ const schema = a
       })
       .returns(a.json())
       .handler(a.handler.function(getScores))
-      .authorization((allow) => [allow.authenticated()]),
+      .authorization((allow) => [allow.guest(), allow.authenticated()]),
     DieVector3: a.customType({
       x: a.float(),
       y: a.float(),
@@ -114,7 +117,7 @@ const schema = a
       })
       .returns(a.ref('ThrowDiceResponse'))
       .handler(a.handler.function(throwDice))
-      .authorization((allow) => [allow.authenticated()]),
+      .authorization((allow) => [allow.guest(), allow.authenticated()]),
     endTurn: a
       .mutation()
       .arguments({
@@ -122,7 +125,7 @@ const schema = a
       })
       .returns(a.integer())
       .handler(a.handler.function(endTurn))
-      .authorization((allow) => [allow.authenticated()]),
+      .authorization((allow) => [allow.guest(), allow.authenticated()]),
     cleanupEmptyGames: a
       .mutation()
       .arguments({
@@ -130,7 +133,7 @@ const schema = a
       })
       .returns(a.json())
       .handler(a.handler.function(cleanupEmptyGames))
-      .authorization((allow) => [allow.authenticated()]),
+      .authorization((allow) => [allow.guest(), allow.authenticated()]),
     Message: a
       .model({
         content: a.string().required(),
@@ -140,7 +143,7 @@ const schema = a
         timestamp: a.datetime().required(),
         ttl: a.integer(),
       })
-      .authorization((allow) => [allow.authenticated()]),
+      .authorization((allow) => [allow.guest(), allow.authenticated()]),
   })
   .authorization((allow) => [allow.resource(postConfirmation)]);
 
@@ -149,8 +152,6 @@ export type Schema = ClientSchema<typeof schema>;
 export const data = defineData({
   schema,
   authorizationModes: {
-    // This tells the data client in your app (generateClient())
-    // to sign API requests with the user authentication token.
     defaultAuthorizationMode: 'userPool',
   },
   logging: true,
