@@ -1,55 +1,76 @@
 <main>
-  <div class="header">
-    <h1>Pelit</h1>
-    <div class="actions">
-      <button type="button" (click)="createGame()">+ Uusi</button>
-      <button type="button" (click)="viewProfile()">Profiili</button>
+  <div class="main-content">
+    <div class="header">
+      <h1>Pelit</h1>
+      <div class="actions">
+        <button type="button" (click)="createGame()">+ Uusi</button>
+        <button type="button" (click)="viewProfile()">Profiili</button>
+      </div>
     </div>
+
+    <mat-table [dataSource]="dataSource" class="mat-elevation-z8">
+      <ng-container matColumnDef="name">
+        <mat-header-cell *matHeaderCellDef> Nimi </mat-header-cell>
+        <mat-cell *matCellDef="let game"> {{ game.name }} </mat-cell>
+      </ng-container>
+
+      <ng-container matColumnDef="owner">
+        <mat-header-cell *matHeaderCellDef> Omistaja </mat-header-cell>
+        <mat-cell *matCellDef="let game"> {{ game.hostedBy }} </mat-cell>
+      </ng-container>
+
+      <ng-container matColumnDef="createdAt">
+        <mat-header-cell *matHeaderCellDef> Luotu </mat-header-cell>
+        <mat-cell *matCellDef="let game"> {{ game.createdAt }} </mat-cell>
+      </ng-container>
+
+      <ng-container matColumnDef="state">
+        <mat-header-cell *matHeaderCellDef> Tila </mat-header-cell>
+        <mat-cell *matCellDef="let game"> {{ game.state }} </mat-cell>
+      </ng-container>
+
+      <mat-header-row *matHeaderRowDef="displayedColumns"></mat-header-row>
+      <mat-row
+        *matRowDef="let row; columns: displayedColumns"
+        class="row-link"
+        (click)="onRowClicked(row)"
+        onkeypress="onRowClicked(row)"
+      ></mat-row>
+
+      <tr class="mat-row" *matNoDataRow>
+        @if (dataSource.loading() | async) {
+          <td class="mat-cell" colspan="displayedColumns.length">
+            <div class="spinner-container">
+              <mat-spinner></mat-spinner>
+            </div>
+          </td>
+        } @else {
+          <tr class="mat-cell" colspan="3">
+            Ei pelejä
+          </tr>
+        }
+      </tr>
+    </mat-table>
+
+    <mat-paginator [pageSize]="10" [pageSizeOptions]="[10, 20, 50]"></mat-paginator>
   </div>
 
-  <mat-table [dataSource]="dataSource" class="mat-elevation-z8">
-    <ng-container matColumnDef="name">
-      <mat-header-cell *matHeaderCellDef> Nimi </mat-header-cell>
-      <mat-cell *matCellDef="let game"> {{ game.name }} </mat-cell>
-    </ng-container>
-
-    <ng-container matColumnDef="owner">
-      <mat-header-cell *matHeaderCellDef> Omistaja </mat-header-cell>
-      <mat-cell *matCellDef="let game"> {{ game.hostedBy }} </mat-cell>
-    </ng-container>
-
-    <ng-container matColumnDef="createdAt">
-      <mat-header-cell *matHeaderCellDef> Luotu </mat-header-cell>
-      <mat-cell *matCellDef="let game"> {{ game.createdAt }} </mat-cell>
-    </ng-container>
-
-    <ng-container matColumnDef="state">
-      <mat-header-cell *matHeaderCellDef> Tila </mat-header-cell>
-      <mat-cell *matCellDef="let game"> {{ game.state }} </mat-cell>
-    </ng-container>
-
-    <mat-header-row *matHeaderRowDef="displayedColumns"></mat-header-row>
-    <mat-row
-      *matRowDef="let row; columns: displayedColumns"
-      class="row-link"
-      (click)="onRowClicked(row)"
-      onkeypress="onRowClicked(row)"
-    ></mat-row>
-
-    <tr class="mat-row" *matNoDataRow>
-      @if (dataSource.loading() | async) {
-        <td class="mat-cell" colspan="displayedColumns.length">
-          <div class="spinner-container">
-            <mat-spinner></mat-spinner>
+  <div class="sidebar">
+    <div class="lobby-players">
+      <div class="players-list">
+        @for (player of lobbyPlayers; track player.id) {
+          <div class="player-card">
+            <span class="player-name">{{ player.name }}</span>
+            <span class="online-indicator"></span>
           </div>
-        </td>
-      } @else {
-        <tr class="mat-cell" colspan="3">
-          Ei pelejä
-        </tr>
-      }
-    </tr>
-  </mat-table>
+        } @empty {
+          <p>Ei pelaajia lobbyssa</p>
+        }
+      </div>
+    </div>
 
-  <mat-paginator [pageSize]="10" [pageSizeOptions]="[10, 20, 50]"></mat-paginator>
+    <div class="chat-section">
+      <app-chat contextType="lobby" [contextId]="null"></app-chat>
+    </div>
+  </div>
 </main>

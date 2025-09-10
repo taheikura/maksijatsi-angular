@@ -84,29 +84,52 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 0;
+  padding: 8px;
+  border-radius: 4px;
+  margin-bottom: 4px;
+  background: #f8f9fa;
 }
-.player-left {
+.players li.current-player {
+  background: #e3f2fd;
+  border: 2px solid #2196f3;
+}
+.leaderboard .rank {
+  font-weight: bold;
+  color: #666;
+  min-width: 20px;
+}
+.leaderboard .player-info {
+  flex: 1;
+  margin-left: 8px;
+}
+.leaderboard .player-name {
+  font-weight: 600;
+  display: block;
+}
+.leaderboard .total-score {
+  font-size: 12px;
+  color: #666;
+  display: block;
+}
+.ready-status {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 .ready-indicator {
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   background: #bbb;
   display: inline-block;
 }
 .ready-indicator.ready {
   background: #28a745;
-  box-shadow: 0 0 6px rgba(40, 167, 69, 0.6);
+  box-shadow: 0 0 4px rgba(40, 167, 69, 0.6);
 }
-.player-name {
-  font-weight: 600;
-}
-.player-right button {
-  padding: 4px 8px;
+.ready-status button {
+  padding: 2px 6px;
+  font-size: 11px;
 }
 .sr-only {
   position: absolute !important;
@@ -175,6 +198,14 @@
   background: #28a745;
   color: white;
   border-color: #1e7e34;
+}
+
+.dice-buttons button:disabled {
+  background: #f8f9fa;
+  color: #6c757d;
+  border-color: #dee2e6;
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .kept-dice {
@@ -287,6 +318,21 @@
   border-bottom: 1px solid #eee;
 }
 
+.score-row.selectable {
+  cursor: pointer;
+  transition: background-color 0.2s;
+  border-radius: 4px;
+}
+
+.score-row.selectable:hover {
+  background: #e3f2fd;
+}
+
+.score-row.selectable .score-value {
+  color: #007bff;
+  font-weight: bold;
+}
+
 .category-name {
   font-weight: 500;
 }
@@ -297,10 +343,19 @@
   text-align: right;
 }
 
+.chat-panel {
+  right: 16px;
+  bottom: 16px;
+  width: 300px;
+}
+
 /* Mobile: make side panels smaller */
 @media (max-width: 800px) {
   .scoresheet,
   .players {
     width: 180px;
+  }
+  .chat-panel {
+    width: 250px;
   }
 }

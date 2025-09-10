@@ -8,7 +8,22 @@
 }
 
 main {
+  display: flex;
+  gap: 20px;
   padding: 16px;
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .header {
@@ -34,4 +49,65 @@ main {
 
 .actions button:hover {
   filter: brightness(0.95);
+}
+
+.lobby-players {
+  padding: 12px;
+  background: #e8f5e8;
+  border-radius: 8px;
+}
+
+.lobby-players h3 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+}
+
+.players-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.player-card {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 16px;
+  font-size: 14px;
+}
+
+.player-name {
+  font-weight: 500;
+}
+
+.online-indicator {
+  width: 8px;
+  height: 8px;
+  background: #28a745;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.chat-section {
+  padding: 12px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.chat-section h3 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+}
+
+.chat-section app-chat {
+  flex: 1;
+  min-height: 0;
 }

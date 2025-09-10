@@ -8,6 +8,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import type { Schema } from '../../../amplify/data/resource';
+import { ChatComponent } from '../chat/chat.component';
 import { UserService } from '../user.service';
 
 interface DieVector3 {
@@ -46,7 +47,7 @@ interface DataClientQueryLike {
 @Component({
   selector: 'app-game',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, ChatComponent],
   templateUrl: './game.component.html',
   styleUrls: ['./game.component.css'],
 })
@@ -63,7 +64,7 @@ export class GameComponent implements OnInit {
   private readonly diceBodies: CANNON.Body[] = [];
   private readonly diceMeshes: THREE.Mesh[] = [];
 
-  private currentPlayerIndex = 0;
+  public currentPlayerIndex = 0;
   public players: Player[] = [];
   public readyState = new Map<string, boolean>();
   public countdown$ = new BehaviorSubject<number | null>(null);
@@ -86,8 +87,8 @@ export class GameComponent implements OnInit {
     'Kakkoset',
     'Kolmoset',
     'Neloset',
-    'Vitoset',
-    'Kutoset',
+    'Viitoset',
+    'Kuutoset',
     'Bonus',
     'Pari',
     'Kaksi paria',
@@ -97,6 +98,7 @@ export class GameComponent implements OnInit {
     'Viisi samaa',
     'Pieni suora',
     'Iso suora',
+    'Täysi suora',
     'Täyskäsi',
     'Superkäsi',
     'Torni',
@@ -109,8 +111,8 @@ export class GameComponent implements OnInit {
     'Kakkoset',
     'Kolmoset',
     'Neloset',
-    'Vitoset',
-    'Kutoset',
+    'Viitoset',
+    'Kuutoset',
   ];
 
   private readonly _location = inject(Location);
@@ -118,7 +120,7 @@ export class GameComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly userService = inject(UserService);
   private readonly client = generateClient<Schema>();
-  private gameId: string | null = null;
+  public gameId: string | null = null;
   public gameState: string | null = null;
   private inited = false;
   private animating = false;
@@ -202,8 +204,8 @@ export class GameComponent implements OnInit {
       0.1,
       1000
     );
-    // Better framing for full-viewport scene so dice are visible
-    this.camera.position.set(0, 6, 12);
+    // Higher camera position to see dice arc trajectory
+    this.camera.position.set(0, 12, 15);
     this.camera.lookAt(0, 0, 0);
   }
 
@@ -248,7 +250,7 @@ export class GameComponent implements OnInit {
 
     this.scene.add(directionalLight);
 
-    const groundGeometry = new THREE.PlaneGeometry(30, 30);
+    const groundGeometry = new THREE.PlaneGeometry(50, 50);
     const loader = new THREE.TextureLoader();
     let groundMaterial;
 
@@ -357,7 +359,7 @@ export class GameComponent implements OnInit {
 
       // Set ready state based on game state
       this.players.forEach((p) => {
-        const isReady = this.gameState === 'ongoing' ? true : false;
+        const isReady = this.gameState === 'ongoing';
         this.readyState.set(p.id, isReady);
       });
 
@@ -398,7 +400,7 @@ export class GameComponent implements OnInit {
   private extractUsername(me: unknown): string | undefined {
     if (!me || typeof me !== 'object') return undefined;
     const asObj = me as Record<string, unknown>;
-    if (typeof asObj['username'] === 'string') return asObj['username'] as string;
+    if (typeof asObj['username'] === 'string') return asObj['username'];
     return undefined;
   }
 
@@ -407,8 +409,8 @@ export class GameComponent implements OnInit {
     const asObj = me as Record<string, unknown>;
     const attrs = asObj['attributes'] as Record<string, unknown> | undefined;
     if (attrs) {
-      if (typeof attrs['nickname'] === 'string') return attrs['nickname'] as string;
-      if (typeof attrs['name'] === 'string') return attrs['name'] as string;
+      if (typeof attrs['nickname'] === 'string') return attrs['nickname'];
+      if (typeof attrs['name'] === 'string') return attrs['name'];
     }
     return undefined;
   }
@@ -516,6 +518,11 @@ export class GameComponent implements OnInit {
       return;
     }
 
+    if (!this.areDiceSettled()) {
+      console.warn('Odota että nopat pysähtyvät!');
+      return;
+    }
+
     // lazy init 3D if needed
     if (!this.inited) {
       await this.initThreeJS();
@@ -570,29 +577,28 @@ export class GameComponent implements OnInit {
 
   private localThrow(numberOfDice: number): ThrowDiceResponse {
     const dice: Die[] = [];
-    const startX = -8; // throw from left side
+    // Base trajectory for consistent arcs
+    const baseVelocity = { x: 3, y: 2, z: 0 };
 
     for (let index = 0; index < numberOfDice; index++) {
-      // Gentle arc trajectory - start from one side, land in center
-      const arcProgress = (index + 1) / numberOfDice;
+      const spread = index * 0.3;
       const position = {
-        x: startX + arcProgress * 2, // slight spread at start
-        y: 4 + Math.random() * 2, // moderate height
-        z: -2 + Math.random() * 4, // slight z variation
+        x: -5 + spread,
+        y: 4,
+        z: Math.random() * 0.5,
       };
 
-      // Gentle forward velocity with arc
+      // Use base velocity with small variations (max ±0.2)
       const velocity = {
-        x: 3 + Math.random() * 2, // forward throw
-        y: 2 + Math.random(), // upward arc
-        z: (Math.random() - 0.5) * 2, // slight side variation
+        x: baseVelocity.x + (Math.random() - 0.5) * 0.4,
+        y: baseVelocity.y + (Math.random() - 0.5) * 0.4,
+        z: baseVelocity.z + (Math.random() - 0.5) * 0.4,
       };
 
-      // Much gentler spin
       const angularVelocity = {
-        x: (Math.random() - 0.5) * 8, // reduced from 50
-        y: (Math.random() - 0.5) * 8, // reduced from 50
-        z: (Math.random() - 0.5) * 8, // reduced from 50
+        x: (Math.random() - 0.5) * 6,
+        y: (Math.random() - 0.5) * 6,
+        z: (Math.random() - 0.5) * 6,
       };
 
       // Random initial rotation
@@ -686,6 +692,11 @@ export class GameComponent implements OnInit {
     // Sync state to backend for multiplayer consistency
     this.syncDiceState();
     console.warn('Noppien arvot:', this.diceValues);
+
+    // Auto-trigger score selection after last throw
+    if (this.rollsLeft === 0) {
+      this.endTurnWithScore();
+    }
   }
 
   private getDiceFaceValue(body: CANNON.Body, upVector: THREE.Vector3): number {
@@ -725,7 +736,7 @@ export class GameComponent implements OnInit {
     return faceValue;
   }
 
-  private areDiceSettled(): boolean {
+  areDiceSettled(): boolean {
     return this.diceBodies.every((body) => body && body.sleepState === CANNON.Body.SLEEPING);
   }
 
@@ -805,10 +816,14 @@ export class GameComponent implements OnInit {
   }
 
   canRoll(): boolean {
-    return this.rollsLeft > 0 && this.gameState === 'ongoing';
+    return this.rollsLeft > 0 && this.gameState === 'ongoing' && this.areDiceSettled();
   }
 
   toggleKeepDie(index: number): void {
+    if (!this.areDiceSettled()) {
+      return;
+    }
+
     if (this.keptDiceValues.has(index)) {
       this.keptDiceValues.delete(index);
       // Show die in 3D scene again
@@ -856,6 +871,15 @@ export class GameComponent implements OnInit {
   endTurnWithScore(): void {
     this.calculateScoreOptions();
     this.showScoreSelection = true;
+  }
+
+  onScoreRowClick(category: string): void {
+    if (this.isCategorySelectable(category)) {
+      const score = this.getPotentialScore(category);
+      if (score !== null) {
+        this.selectScore(category, score);
+      }
+    }
   }
 
   selectScore(category: string, score: number): void {
@@ -923,19 +947,48 @@ export class GameComponent implements OnInit {
     const counts = [0, 0, 0, 0, 0, 0, 0]; // index 0 unused, 1-6 for dice values
     dice.forEach((die) => counts[die]++);
 
+    return this.getScoreForCategory(category, counts, dice);
+  }
+
+  private getScoreForCategory(category: string, counts: number[], dice: number[]): number {
+    if (this.isNumberCategory(category)) {
+      return this.calculateNumberScore(category, counts);
+    }
+
+    return this.calculateSpecialScore(category, counts, dice);
+  }
+
+  private isNumberCategory(category: string): boolean {
+    return ['Ykköset', 'Kakkoset', 'Kolmoset', 'Neloset', 'Viitoset', 'Kuutoset'].includes(
+      category
+    );
+  }
+
+  private calculateNumberScore(category: string, counts: number[]): number {
+    const numberMap: Record<string, number> = {
+      Ykköset: 1,
+      Kakkoset: 2,
+      Kolmoset: 3,
+      Neloset: 4,
+      Viitoset: 5,
+      Kuutoset: 6,
+    };
+    const value = numberMap[category];
+    return counts[value] * value;
+  }
+
+  private calculateSpecialScore(category: string, counts: number[], dice: number[]): number {
+    const pairScore = this.calculatePairScore(category, counts);
+    if (pairScore !== null) return pairScore;
+
+    const straightScore = this.calculateStraightScore(category, dice);
+    if (straightScore !== null) return straightScore;
+
+    return this.calculateOtherScore(category, counts, dice);
+  }
+
+  private calculatePairScore(category: string, counts: number[]): number | null {
     switch (category) {
-      case 'Ykköset':
-        return counts[1] * 1;
-      case 'Kakkoset':
-        return counts[2] * 2;
-      case 'Kolmoset':
-        return counts[3] * 3;
-      case 'Neloset':
-        return counts[4] * 4;
-      case 'Vitoset':
-        return counts[5] * 5;
-      case 'Kutoset':
-        return counts[6] * 6;
       case 'Pari':
         return this.findPair(counts);
       case 'Kaksi paria':
@@ -948,10 +1001,26 @@ export class GameComponent implements OnInit {
         return this.findOfAKind(counts, 4);
       case 'Viisi samaa':
         return this.findOfAKind(counts, 5);
+      default:
+        return null;
+    }
+  }
+
+  private calculateStraightScore(category: string, dice: number[]): number | null {
+    switch (category) {
       case 'Pieni suora':
         return this.findSmallStraight(dice) ? 15 : 0;
       case 'Iso suora':
         return this.findLargeStraight(dice) ? 20 : 0;
+      case 'Täysi suora':
+        return this.findFullStraight(dice) ? 25 : 0;
+      default:
+        return null;
+    }
+  }
+
+  private calculateOtherScore(category: string, counts: number[], dice: number[]): number {
+    switch (category) {
       case 'Täyskäsi':
         return this.findFullHouse(counts);
       case 'Superkäsi':
@@ -998,33 +1067,18 @@ export class GameComponent implements OnInit {
   }
 
   private findSmallStraight(dice: number[]): boolean {
-    const unique = [...new Set(dice)].sort();
-    return (
-      (unique.length >= 4 &&
-        unique.includes(1) &&
-        unique.includes(2) &&
-        unique.includes(3) &&
-        unique.includes(4)) ||
-      (unique.includes(2) && unique.includes(3) && unique.includes(4) && unique.includes(5)) ||
-      (unique.includes(3) && unique.includes(4) && unique.includes(5) && unique.includes(6))
-    );
+    const unique = [...new Set(dice)].sort((a, b) => a - b);
+    return [1, 2, 3, 4, 5].every((n) => unique.includes(n));
   }
 
   private findLargeStraight(dice: number[]): boolean {
-    const unique = [...new Set(dice)].sort();
-    return (
-      unique.length >= 5 &&
-      ((unique.includes(1) &&
-        unique.includes(2) &&
-        unique.includes(3) &&
-        unique.includes(4) &&
-        unique.includes(5)) ||
-        (unique.includes(2) &&
-          unique.includes(3) &&
-          unique.includes(4) &&
-          unique.includes(5) &&
-          unique.includes(6)))
-    );
+    const unique = [...new Set(dice)].sort((a, b) => a - b);
+    return [2, 3, 4, 5, 6].every((n) => unique.includes(n));
+  }
+
+  private findFullStraight(dice: number[]): boolean {
+    const unique = [...new Set(dice)].sort((a, b) => a - b);
+    return unique.length === 6 && unique.every((n, i) => n === i + 1);
   }
 
   private findFullHouse(counts: number[]): number {
@@ -1071,5 +1125,36 @@ export class GameComponent implements OnInit {
 
   toggleScoreView(): void {
     this.showAllPlayers = !this.showAllPlayers;
+  }
+
+  getPlayerTotalScore(playerId: string): number {
+    const playerScore = this.playerScores.get(playerId);
+    if (!playerScore) return 0;
+
+    return Array.from(playerScore.values()).reduce((sum, score) => sum + score, 0);
+  }
+
+  getLeaderboard(): { player: Player; totalScore: number }[] {
+    return this.players
+      .map((player) => ({
+        player,
+        totalScore: this.getPlayerTotalScore(player.id),
+      }))
+      .sort((a, b) => b.totalScore - a.totalScore);
+  }
+
+  isCategorySelectable(category: string): boolean {
+    if (!this.showScoreSelection) return false;
+    const currentPlayer = this.players[this.currentPlayerIndex];
+    if (!currentPlayer) return false;
+
+    const playerScore = this.playerScores.get(currentPlayer.id) ?? new Map();
+    return !playerScore.has(category) && this.scoreOptions.some((opt) => opt.category === category);
+  }
+
+  getPotentialScore(category: string): number | null {
+    if (!this.showScoreSelection) return null;
+    const option = this.scoreOptions.find((opt) => opt.category === category);
+    return option ? option.score : null;
   }
 }

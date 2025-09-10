@@ -4,9 +4,8 @@ export const handler: Schema['throwDice']['functionHandler'] = async (event) => 
   // arguments typed from `.arguments()`
   const { numberOfDice } = event.arguments;
 
-  const tableSize = 100;
-  const dropHeight = 16;
-  const maxVel = 13;
+  // Base trajectory for consistent arcs
+  const baseVelocity = { x: 3, y: 0, z: 2 };
 
   const dice = [];
   for (let index = 0; index < numberOfDice; index++) {
@@ -19,10 +18,11 @@ export const handler: Schema['throwDice']['functionHandler'] = async (event) => 
     const y = Math.sqrt(u1) * Math.sin(2 * Math.PI * u3);
     const z = Math.sqrt(u1) * Math.cos(2 * Math.PI * u3);
 
+    const spread = index * 0.3;
     const position = {
-      x: (Math.random() * tableSize) / 10 + tableSize / 3.5,
-      y: Math.random() + dropHeight,
-      z: (Math.random() * tableSize) / 10 + tableSize / 3.5,
+      x: -5 + spread,
+      y: 4,
+      z: Math.random() * 0.5,
     };
     const quaternion = {
       w,
@@ -31,14 +31,14 @@ export const handler: Schema['throwDice']['functionHandler'] = async (event) => 
       z,
     };
     const velocity = {
-      x: -Math.random() * maxVel - 6,
-      y: (-Math.random() * maxVel) / 2 - 5,
-      z: -Math.random() * maxVel - 6,
+      x: baseVelocity.x + (Math.random() - 0.5) * 0.2,
+      y: baseVelocity.y + (Math.random() - 0.5) * 0.2,
+      z: baseVelocity.z + (Math.random() - 0.5) * 0.2,
     };
     const angularVelocity = {
-      x: Math.random() * 50 - 25,
-      y: Math.random() * 50 - 25,
-      z: Math.random() * 50 - 25,
+      x: (Math.random() - 0.5) * 4,
+      y: (Math.random() - 0.5) * 4,
+      z: (Math.random() - 0.5) * 4,
     };
     dice.push({
       position,
