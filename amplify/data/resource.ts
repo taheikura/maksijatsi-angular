@@ -1,9 +1,9 @@
 import { type ClientSchema, a, defineData } from '@aws-amplify/backend';
-// import { postConfirmation } from '../auth/post-confirmation/resource';
-import { cleanupEmptyGames } from '../functions/cleanup-empty-games/resource';
-import { endTurn } from '../functions/end-turn/resource';
-import { getScores } from '../functions/get-scores/resource';
-import { throwDice } from '../functions/throw-dice/resource';
+// Temporarily removing function imports
+// import { cleanupEmptyGames } from '../functions/cleanup-empty-games/resource';
+// import { endTurn } from '../functions/end-turn/resource';
+// import { getScores } from '../functions/get-scores/resource';
+// import { throwDice } from '../functions/throw-dice/resource';
 
 // Define score types enum once for reuse
 const scoreTypesEnum = a.enum([
@@ -86,7 +86,7 @@ const schema = a
         diceValues: a.integer().array().required(),
       })
       .returns(a.json())
-      .handler(a.handler.function(getScores))
+      // .handler(a.handler.function(getScores))
       .authorization((allow) => [allow.publicApiKey()]),
     DieVector3: a.customType({
       x: a.float(),
@@ -116,7 +116,7 @@ const schema = a
         numberOfDice: a.integer().required(),
       })
       .returns(a.ref('ThrowDiceResponse'))
-      .handler(a.handler.function(throwDice))
+      // .handler(a.handler.function(throwDice))
       .authorization((allow) => [allow.publicApiKey()]),
     endTurn: a
       .mutation()
@@ -124,7 +124,7 @@ const schema = a
         scoreType: scoreTypesEnum,
       })
       .returns(a.integer())
-      .handler(a.handler.function(endTurn))
+      // .handler(a.handler.function(endTurn))
       .authorization((allow) => [allow.publicApiKey()]),
     cleanupEmptyGames: a
       .mutation()
@@ -132,7 +132,7 @@ const schema = a
         gameId: a.string().required(),
       })
       .returns(a.json())
-      .handler(a.handler.function(cleanupEmptyGames))
+      // .handler(a.handler.function(cleanupEmptyGames))
       .authorization((allow) => [allow.publicApiKey()]),
     Message: a
       .model({
