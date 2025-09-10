@@ -80,60 +80,11 @@ const schema = a
         score: a.hasMany('Score', 'scoreSheetId'),
       })
       .authorization((allow) => [allow.publicApiKey()]),
-    getScores: a
-      .query()
-      .arguments({
-        diceValues: a.integer().array().required(),
-      })
-      .returns(a.json())
-      // .handler(a.handler.function(getScores))
-      .authorization((allow) => [allow.publicApiKey()]),
-    DieVector3: a.customType({
-      x: a.float(),
-      y: a.float(),
-      z: a.float(),
-    }),
-    DieQuaternion: a.customType({
-      x: a.float(),
-      y: a.float(),
-      z: a.float(),
-      w: a.float(),
-    }),
-    Die: a.customType({
-      position: a.ref('DieVector3'),
-      quaternion: a.ref('DieQuaternion'),
-      velocity: a.ref('DieVector3'),
-      angularVelocity: a.ref('DieVector3'),
-    }),
-    ThrowDiceResponse: a.customType({
-      gravity: a.ref('DieVector3'),
-      groundPosition: a.ref('DieVector3'),
-      dice: a.ref('Die').array(),
-    }),
-    throwDice: a
-      .query()
-      .arguments({
-        numberOfDice: a.integer().required(),
-      })
-      .returns(a.ref('ThrowDiceResponse'))
-      // .handler(a.handler.function(throwDice))
-      .authorization((allow) => [allow.publicApiKey()]),
-    endTurn: a
-      .mutation()
-      .arguments({
-        scoreType: scoreTypesEnum,
-      })
-      .returns(a.integer())
-      // .handler(a.handler.function(endTurn))
-      .authorization((allow) => [allow.publicApiKey()]),
-    cleanupEmptyGames: a
-      .mutation()
-      .arguments({
-        gameId: a.string().required(),
-      })
-      .returns(a.json())
-      // .handler(a.handler.function(cleanupEmptyGames))
-      .authorization((allow) => [allow.publicApiKey()]),
+
+
+
+
+
     Message: a
       .model({
         content: a.string().required(),
