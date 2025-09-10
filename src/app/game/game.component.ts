@@ -87,8 +87,8 @@ export class GameComponent implements OnInit {
     'Kakkoset',
     'Kolmoset',
     'Neloset',
-    'Vitoset',
-    'Kutoset',
+    'Viitoset',
+    'Kuutoset',
     'Bonus',
     'Pari',
     'Kaksi paria',
@@ -111,8 +111,8 @@ export class GameComponent implements OnInit {
     'Kakkoset',
     'Kolmoset',
     'Neloset',
-    'Vitoset',
-    'Kutoset',
+    'Viitoset',
+    'Kuutoset',
   ];
 
   private readonly _location = inject(Location);
@@ -577,24 +577,28 @@ export class GameComponent implements OnInit {
 
   private localThrow(numberOfDice: number): ThrowDiceResponse {
     const dice: Die[] = [];
+    // Base trajectory for consistent arcs
+    const baseVelocity = { x: 3, y: 2, z: 0 };
 
     for (let index = 0; index < numberOfDice; index++) {
+      const spread = index * 0.3;
       const position = {
-        x: -6 + Math.random() * 2,
-        y: 4 + Math.random(),
-        z: -3 + Math.random() * 2,
+        x: -5 + spread,
+        y: 4,
+        z: Math.random() * 0.5,
       };
 
+      // Use base velocity with small variations (max ±0.2)
       const velocity = {
-        x: 4 + Math.random() * 2,
-        y: 2 + Math.random(),
-        z: 1 + Math.random(),
+        x: baseVelocity.x + (Math.random() - 0.5) * 0.4,
+        y: baseVelocity.y + (Math.random() - 0.5) * 0.4,
+        z: baseVelocity.z + (Math.random() - 0.5) * 0.4,
       };
 
       const angularVelocity = {
-        x: (Math.random() - 0.5) * 8,
-        y: (Math.random() - 0.5) * 8,
-        z: (Math.random() - 0.5) * 8,
+        x: (Math.random() - 0.5) * 6,
+        y: (Math.random() - 0.5) * 6,
+        z: (Math.random() - 0.5) * 6,
       };
 
       // Random initial rotation
@@ -955,7 +959,9 @@ export class GameComponent implements OnInit {
   }
 
   private isNumberCategory(category: string): boolean {
-    return ['Ykköset', 'Kakkoset', 'Kolmoset', 'Neloset', 'Vitoset', 'Kutoset'].includes(category);
+    return ['Ykköset', 'Kakkoset', 'Kolmoset', 'Neloset', 'Viitoset', 'Kuutoset'].includes(
+      category
+    );
   }
 
   private calculateNumberScore(category: string, counts: number[]): number {
@@ -964,8 +970,8 @@ export class GameComponent implements OnInit {
       Kakkoset: 2,
       Kolmoset: 3,
       Neloset: 4,
-      Vitoset: 5,
-      Kutoset: 6,
+      Viitoset: 5,
+      Kuutoset: 6,
     };
     const value = numberMap[category];
     return counts[value] * value;

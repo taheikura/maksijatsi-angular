@@ -29,7 +29,8 @@ interface Message {
     <div class="chat-container">
       <div class="chat-messages" #messagesContainer>
         <div *ngFor="let message of messages" class="message">
-          <span class="sender">{{ message.senderName }}:</span>
+          <span class="sender">{{ message.senderName }}</span>
+          <span class="timestamp">{{ formatTimestamp(message.timestamp) }}</span>
           <span class="content">{{ message.content }}</span>
         </div>
       </div>
@@ -60,15 +61,22 @@ interface Message {
         font-size: 14px;
       }
       .message {
-        margin-bottom: 4px;
+        margin-bottom: 2px;
         word-wrap: break-word;
+        line-height: 1.2;
       }
       .sender {
         font-weight: bold;
         color: #007bff;
       }
+      .timestamp {
+        font-size: 10px;
+        color: #666;
+        margin-left: 4px;
+      }
       .content {
         margin-left: 4px;
+        word-wrap: break-word;
       }
       .chat-input {
         padding: 8px;
@@ -193,6 +201,11 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     }
   }
 
+  formatTimestamp(timestamp: string): string {
+    const date = new Date(timestamp);
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+  }
+
   async sendMessage() {
     const messageContent = this.newMessage.trim();
     if (!messageContent) return;
@@ -221,12 +234,16 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
         return;
       }
 
+      const now = new Date();
+      const ttl = Math.floor(now.getTime() / 1000) + 86400; // 24 hours from now
+
       await this.client.models.Message.create({
         content: messageContent,
         senderName: this.senderName,
         contextType: this.contextType,
         contextId: this.contextId,
-        timestamp: new Date().toISOString(),
+        timestamp: now.toISOString(),
+        ttl,
       });
     } catch (error) {
       console.error('Error sending message:', error);

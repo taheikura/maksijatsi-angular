@@ -84,7 +84,18 @@
           <span>Vuoro: {{ getCurrentPlayerName() }}</span>
           <span>Heitto {{ getCurrentThrow() }}/3</span>
         </div>
-        @if (keptDiceValues.size > 0) {
+        @if (rollsLeft === 0 && diceValues.length > 0) {
+          <div class="dice-selection">
+            <span>Noppien arvot:</span>
+            <div class="dice-buttons">
+              @for (value of diceValues; track $index) {
+                <button type="button" disabled>
+                  {{ value }}
+                </button>
+              }
+            </div>
+          </div>
+        } @else if (keptDiceValues.size > 0) {
           <div class="kept-dice">
             <span>Pidetyt nopat:</span>
             <div class="dice-display">
@@ -133,7 +144,6 @@
   </div>
 
   <div class="overlay chat-panel">
-    <h4>Chat</h4>
     <app-chat contextType="game" [contextId]="gameId"></app-chat>
   </div>
 </div>

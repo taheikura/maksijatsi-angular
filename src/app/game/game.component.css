@@ -347,7 +347,6 @@
   right: 16px;
   bottom: 16px;
   width: 300px;
-  height: 250px;
 }
 
 /* Mobile: make side panels smaller */
@@ -358,6 +357,5 @@
   }
   .chat-panel {
     width: 250px;
-    height: 200px;
   }
 }
