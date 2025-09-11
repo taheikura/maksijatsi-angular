@@ -189,6 +189,12 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
 
   private subscribeToMessages() {
     try {
+      if (this.graphqlClient.isGuest) {
+        // For guests, use polling instead of subscriptions
+        this.startPolling();
+        return;
+      }
+
       if (!this.client.models.Message?.observeQuery) {
         console.warn('Message observeQuery not available');
         return;
@@ -214,6 +220,13 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     } catch (error) {
       console.error('Error subscribing to messages:', error);
     }
+  }
+
+  private startPolling(): void {
+    // Poll for new messages every 3 seconds for guests
+    setInterval(() => {
+      this.loadMessages();
+    }, 3000);
   }
 
   formatTimestamp(timestamp: string): string {
