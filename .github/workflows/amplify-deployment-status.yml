@@ -150,22 +150,6 @@ jobs:
               pr.merge_commit_sha === context.sha
             );
             
-            // Find the PR that was just merged
-            const { data: prs } = await github.rest.pulls.list({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              state: 'closed',
-              sort: 'updated',
-              direction: 'desc',
-              per_page: 10
-            });
-            
-            // Find the most recently merged PR
-            const mergedPR = prs.find(pr => 
-              pr.merged_at && 
-              pr.merge_commit_sha === context.sha
-            );
-            
             if (!mergedPR) {
               console.log('No matching merged PR found');
               return;
