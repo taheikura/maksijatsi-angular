@@ -562,14 +562,15 @@ export class GameComponent implements OnInit {
         response = await fn({ numberOfDice } as unknown);
       }
 
-      // fallback to local generation if backend not available or returned undefined
-      if (!response?.dice) {
+      // Validate server response
+      if (!response?.dice || !Array.isArray(response.dice) || response.dice.length === 0) {
+        console.warn('Invalid server response, using local generation');
         response = this.localThrow(numberOfDice);
       }
 
       this.applyThrowResponse(response);
     } catch (error) {
-      console.error('Virhe nopanheiton API:ssa, käytetään paikallista generointia', error);
+      console.error('Server error during dice throw, using local generation:', error);
       const fallback = this.localThrow(numberOfDice);
       this.applyThrowResponse(fallback);
     }
@@ -649,11 +650,19 @@ export class GameComponent implements OnInit {
 
       // Wake up sleeping bodies for subsequent throws
       body.wakeUp();
-      // Reset body state for proper physics
+
+      // First set position and rotation, then velocities
+      this.setBodyPose(body, die.position, die.quaternion);
+
+      // Reset velocities before applying new ones
       body.velocity.set(0, 0, 0);
       body.angularVelocity.set(0, 0, 0);
 
-      this.applyDieToBody(body, mesh, die);
+      // Apply new velocities
+      this.setBodyVelocities(body, die.velocity, die.angularVelocity);
+
+      // Sync mesh with body
+      if (mesh) this.syncMeshWithBody(mesh, body);
       diceIndex++;
     }
 
