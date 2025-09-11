@@ -269,7 +269,7 @@ export class LobbyComponent implements OnInit {
   }
 
   private getHostName(): string {
-    return this.userAttributes?.nickname ?? 'unknown';
+    return this.userAttributes?.nickname ?? 'Unknown';
   }
 
   async deleteGame(id: string) {
