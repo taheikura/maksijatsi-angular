@@ -3,7 +3,9 @@
     <div class="header">
       <h1>Pelit</h1>
       <div class="actions">
-        <button type="button" (click)="createGame()">+ Uusi</button>
+        @if (!graphqlClient.isGuest) {
+          <button type="button" (click)="createGame()">+ Uusi</button>
+        }
         <button type="button" (click)="viewProfile()">Profiili</button>
       </div>
     </div>
