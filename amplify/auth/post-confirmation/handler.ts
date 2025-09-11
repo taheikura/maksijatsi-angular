@@ -1,52 +1,17 @@
 import type { PostConfirmationTriggerHandler } from "aws-lambda";
-import { type Schema } from "../../data/resource";
-import { Amplify } from "aws-amplify";
-import { generateClient } from "aws-amplify/data";
-
-Amplify.configure(
-  {
-    API: {
-      GraphQL: {
-        endpoint: process.env.AMPLIFY_DATA_GRAPHQL_ENDPOINT!,
-        region: process.env.AWS_REGION!,
-        defaultAuthMode: 'iam',
-      },
-    },
-  },
-  {
-    Auth: {
-      credentialsProvider: {
-        getCredentialsAndIdentityId: async () => ({
-          credentials: {
-            accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
-            sessionToken: process.env.AWS_SESSION_TOKEN!,
-          },
-        }),
-        clearCredentialsAndIdentityId: () => {},
-      },
-    },
-  }
-);
-
-const client = generateClient<Schema>({
-  authMode: 'iam',
-});
 
 export const handler: PostConfirmationTriggerHandler = async (event) => {
   try {
-    console.log('Creating user profile for:', event.userName);
+    console.log('PostConfirmation triggered for user:', event.userName);
     
-    const result = await client.models.User.create({
-      name: event.request.userAttributes.nickname ?? event.userName,
-      profileOwner: `${event.request.userAttributes.sub}::${event.userName}`,
-    });
+    // For now, just log the event and return success
+    // The user profile will be created when they first access the app
+    console.log('User attributes:', event.request.userAttributes);
     
-    console.log('User profile created:', result);
+    return event;
   } catch (error) {
-    console.error('Error creating user profile:', error);
-    throw error;
+    console.error('PostConfirmation error:', error);
+    // Don't throw - allow user creation to succeed
+    return event;
   }
-
-  return event;
 };
