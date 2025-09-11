@@ -182,6 +182,18 @@ export class LobbyComponent implements OnInit {
           console.error('Error fetching user:', errors);
           return null;
         }
+
+        // If authenticated user doesn't exist, create it
+        if (!data || data.length === 0) {
+          const userName = this.userAttributes?.nickname ?? this.user?.userId ?? 'Unknown';
+          const createResult = await this.graphqlClient.client.models['User']['create']({
+            name: userName,
+            profileOwner: `${this.user?.userId}::${this.user?.username ?? this.user?.userId}`,
+            isGuest: false,
+          });
+          return createResult.data;
+        }
+
         return data[0];
       }
     } catch (error) {
