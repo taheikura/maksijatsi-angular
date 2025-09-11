@@ -1,9 +1,8 @@
 import { type ClientSchema, a, defineData } from '@aws-amplify/backend';
-// Temporarily removing function imports
-// import { cleanupEmptyGames } from '../functions/cleanup-empty-games/resource';
-// import { endTurn } from '../functions/end-turn/resource';
-// import { getScores } from '../functions/get-scores/resource';
-// import { throwDice } from '../functions/throw-dice/resource';
+import { cleanupEmptyGames } from '../functions/cleanup-empty-games/resource';
+import { endTurn } from '../functions/end-turn/resource';
+import { getScores } from '../functions/get-scores/resource';
+import { throwDice } from '../functions/throw-dice/resource';
 
 // Define score types enum once for reuse
 const scoreTypesEnum = a.enum([
@@ -45,7 +44,7 @@ const schema = a
         guestAccessEnabled: a.boolean().default(true),
       })
       .secondaryIndexes((index) => [index('state')])
-      .authorization((allow) => [allow.publicApiKey()]),
+      .authorization((allow) => [allow.authenticated(), allow.guest()]),
     User: a
       .model({
         profileOwner: a.string(),
@@ -58,7 +57,7 @@ const schema = a
         guestId: a.string(),
       })
       .secondaryIndexes((index) => [index('profileOwner'), index('guestId')])
-      .authorization((allow) => [allow.publicApiKey()]),
+      .authorization((allow) => [allow.authenticated(), allow.guest()]),
     ScoreType: a.customType({
       type: scoreTypesEnum,
     }),
@@ -72,19 +71,73 @@ const schema = a
         scoreSheetId: a.id().required(),
         scoreSheet: a.belongsTo('ScoreSheet', 'scoreSheetId'),
       })
-      .authorization((allow) => [allow.publicApiKey()]),
+      .authorization((allow) => [allow.authenticated(), allow.guest()]),
     ScoreSheet: a
       .model({
         gameId: a.id().required(),
         game: a.belongsTo('Game', 'gameId'),
         score: a.hasMany('Score', 'scoreSheetId'),
       })
-      .authorization((allow) => [allow.publicApiKey()]),
+      .authorization((allow) => [allow.authenticated(), allow.guest()]),
 
 
 
 
 
+    DieVector3: a.customType({
+      x: a.float(),
+      y: a.float(),
+      z: a.float(),
+    }),
+    DieQuaternion: a.customType({
+      x: a.float(),
+      y: a.float(),
+      z: a.float(),
+      w: a.float(),
+    }),
+    Die: a.customType({
+      position: a.ref('DieVector3'),
+      quaternion: a.ref('DieQuaternion'),
+      velocity: a.ref('DieVector3'),
+      angularVelocity: a.ref('DieVector3'),
+    }),
+    ThrowDiceResponse: a.customType({
+      gravity: a.ref('DieVector3'),
+      groundPosition: a.ref('DieVector3'),
+      dice: a.ref('Die').array(),
+    }),
+    getScores: a
+      .query()
+      .arguments({
+        diceValues: a.integer().array().required(),
+      })
+      .returns(a.json())
+      .handler(a.handler.function(getScores))
+      .authorization((allow) => [allow.authenticated(), allow.guest()]),
+    throwDice: a
+      .query()
+      .arguments({
+        numberOfDice: a.integer().required(),
+      })
+      .returns(a.ref('ThrowDiceResponse'))
+      .handler(a.handler.function(throwDice))
+      .authorization((allow) => [allow.authenticated(), allow.guest()]),
+    endTurn: a
+      .mutation()
+      .arguments({
+        scoreType: scoreTypesEnum,
+      })
+      .returns(a.integer())
+      .handler(a.handler.function(endTurn))
+      .authorization((allow) => [allow.authenticated(), allow.guest()]),
+    cleanupEmptyGames: a
+      .mutation()
+      .arguments({
+        gameId: a.string().required(),
+      })
+      .returns(a.json())
+      .handler(a.handler.function(cleanupEmptyGames))
+      .authorization((allow) => [allow.authenticated(), allow.guest()]),
     Message: a
       .model({
         content: a.string().required(),
@@ -94,9 +147,9 @@ const schema = a
         timestamp: a.datetime().required(),
         ttl: a.integer(),
       })
-      .authorization((allow) => [allow.publicApiKey()]),
+      .authorization((allow) => [allow.authenticated(), allow.guest()]),
   })
-  .authorization((allow) => [allow.publicApiKey()]);
+  .authorization((allow) => [allow.authenticated(), allow.guest()]);
 
 export type Schema = ClientSchema<typeof schema>;
 
@@ -104,6 +157,9 @@ export const data = defineData({
   schema,
   authorizationModes: {
     defaultAuthorizationMode: 'userPool',
+    apiKeyAuthorizationMode: {
+      expiresInDays: 30,
+    },
   },
   logging: true,
 });
