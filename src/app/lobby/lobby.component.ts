@@ -113,7 +113,16 @@ export class LobbyComponent implements OnInit {
 
   ngOnInit() {
     this.dataSource.loadGames();
+    this.ensureUserProfile();
     this.loadLobbyPlayers();
+  }
+
+  private ensureUserProfile(): void {
+    if (this.graphqlClient.isGuest) return;
+
+    this.getUserProfile().catch((error) => {
+      console.error('Error ensuring user profile:', error);
+    });
   }
 
   async loadLobbyPlayers() {
