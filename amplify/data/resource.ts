@@ -44,7 +44,7 @@ const schema = a
         guestAccessEnabled: a.boolean().default(true),
       })
       .secondaryIndexes((index) => [index('state')])
-      .authorization((allow) => [allow.authenticated(), allow.guest()]),
+      .authorization((allow) => [allow.authenticated(), allow.publicApiKey()]),
     User: a
       .model({
         profileOwner: a.string(),
@@ -57,7 +57,7 @@ const schema = a
         guestId: a.string(),
       })
       .secondaryIndexes((index) => [index('profileOwner'), index('guestId')])
-      .authorization((allow) => [allow.authenticated(), allow.guest()]),
+      .authorization((allow) => [allow.authenticated(), allow.publicApiKey()]),
     ScoreType: a.customType({
       type: scoreTypesEnum,
     }),
@@ -71,19 +71,14 @@ const schema = a
         scoreSheetId: a.id().required(),
         scoreSheet: a.belongsTo('ScoreSheet', 'scoreSheetId'),
       })
-      .authorization((allow) => [allow.authenticated(), allow.guest()]),
+      .authorization((allow) => [allow.authenticated(), allow.publicApiKey()]),
     ScoreSheet: a
       .model({
         gameId: a.id().required(),
         game: a.belongsTo('Game', 'gameId'),
         score: a.hasMany('Score', 'scoreSheetId'),
       })
-      .authorization((allow) => [allow.authenticated(), allow.guest()]),
-
-
-
-
-
+      .authorization((allow) => [allow.authenticated(), allow.publicApiKey()]),
     DieVector3: a.customType({
       x: a.float(),
       y: a.float(),
@@ -113,7 +108,7 @@ const schema = a
       })
       .returns(a.json())
       .handler(a.handler.function(getScores))
-      .authorization((allow) => [allow.authenticated(), allow.guest()]),
+      .authorization((allow) => [allow.authenticated(), allow.publicApiKey()]),
     throwDice: a
       .query()
       .arguments({
@@ -121,7 +116,7 @@ const schema = a
       })
       .returns(a.ref('ThrowDiceResponse'))
       .handler(a.handler.function(throwDice))
-      .authorization((allow) => [allow.authenticated(), allow.guest()]),
+      .authorization((allow) => [allow.authenticated(), allow.publicApiKey()]),
     endTurn: a
       .mutation()
       .arguments({
@@ -129,7 +124,7 @@ const schema = a
       })
       .returns(a.integer())
       .handler(a.handler.function(endTurn))
-      .authorization((allow) => [allow.authenticated(), allow.guest()]),
+      .authorization((allow) => [allow.authenticated(), allow.publicApiKey()]),
     cleanupEmptyGames: a
       .mutation()
       .arguments({
@@ -137,7 +132,7 @@ const schema = a
       })
       .returns(a.json())
       .handler(a.handler.function(cleanupEmptyGames))
-      .authorization((allow) => [allow.authenticated(), allow.guest()]),
+      .authorization((allow) => [allow.authenticated(), allow.publicApiKey()]),
     Message: a
       .model({
         content: a.string().required(),
@@ -147,9 +142,9 @@ const schema = a
         timestamp: a.datetime().required(),
         ttl: a.integer(),
       })
-      .authorization((allow) => [allow.authenticated(), allow.guest()]),
+      .authorization((allow) => [allow.authenticated(), allow.publicApiKey()]),
   })
-  .authorization((allow) => [allow.authenticated(), allow.guest()]);
+  .authorization((allow) => [allow.authenticated(), allow.publicApiKey()]);
 
 export type Schema = ClientSchema<typeof schema>;
 
