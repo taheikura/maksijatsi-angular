@@ -156,6 +156,18 @@ export class LobbyComponent implements OnInit {
           console.error('Error fetching guest user:', errors);
           return null;
         }
+
+        // If guest user doesn't exist, create it
+        if (!data || data.length === 0) {
+          const guestName = `Vieras_${guestId.slice(-4)}`;
+          const createResult = await this.graphqlClient.client.models['User']['create']({
+            name: guestName,
+            isGuest: true,
+            guestId,
+          });
+          return createResult.data;
+        }
+
         return data[0];
       } else {
         // For authenticated users, look up by profileOwner
