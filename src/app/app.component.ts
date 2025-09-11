@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy } from '@angular/core';
 import { RouterOutlet, Router } from '@angular/router';
 import { Amplify } from 'aws-amplify';
 import outputs from '../../amplify_outputs.json';
@@ -15,7 +15,7 @@ Amplify.configure(outputs);
   styleUrl: './app.component.css',
   imports: [RouterOutlet, AmplifyAuthenticatorModule],
 })
-export class AppComponent implements OnInit {
+export class AppComponent implements OnInit, OnDestroy {
   title = 'maksi-jatsi';
   public authenticator = inject(AuthenticatorService);
   private router = inject(Router);
@@ -53,6 +53,7 @@ export class AppComponent implements OnInit {
 
   async signOut(): Promise<void> {
     if (this.isGuest) {
+      await this.cleanupGuestUser();
       this.isGuest = false;
       localStorage.removeItem('isGuest');
       localStorage.removeItem('guestId');
@@ -60,6 +61,31 @@ export class AppComponent implements OnInit {
       this.router.navigate(['/']);
     } else {
       await signOut();
+    }
+  }
+
+  ngOnDestroy(): void {
+    // Cleanup guest user when app is destroyed
+    if (this.isGuest) {
+      this.cleanupGuestUser();
+    }
+  }
+
+  private async cleanupGuestUser(): Promise<void> {
+    try {
+      const guestId = localStorage.getItem('guestId');
+      if (!guestId) return;
+
+      // Find and delete the guest user
+      const { data } = await this.graphqlClient.client.models.User.list({
+        filter: { guestId: { eq: guestId } },
+      });
+
+      if (data && data.length > 0) {
+        await this.graphqlClient.client.models.User.delete({ id: data[0].id });
+      }
+    } catch (error) {
+      console.error('Error cleaning up guest user:', error);
     }
   }
 

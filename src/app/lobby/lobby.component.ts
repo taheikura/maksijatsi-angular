@@ -122,7 +122,7 @@ export class LobbyComponent implements OnInit {
 
       const uniqueUsers = new Map<string, Schema['User']['type']>();
       data
-        .filter((user) => !user.gameId)
+        .filter((user) => !user.gameId && !user.isGuest) // Exclude guests from lobby
         .forEach((user) => {
           const key = user.profileOwner ?? user.id;
           if (!uniqueUsers.has(key)) {
