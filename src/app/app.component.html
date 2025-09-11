@@ -1,8 +1,19 @@
-<amplify-authenticator>
-  <ng-template amplifySlot="authenticated" let-user="user" let-signOut="signOut">
-    <router-outlet></router-outlet>
-    @if (!isInGame()) {
-      <button type="button" (click)="signOut()">Sign Out</button>
-    }
-  </ng-template>
-</amplify-authenticator>
+@if (authenticator.authStatus === 'authenticated' || isGuest) {
+  <router-outlet></router-outlet>
+  @if (!isInGame()) {
+    <button type="button" (click)="signOut()">{{ isGuest ? 'Exit Guest Mode' : 'Sign Out' }}</button>
+  }
+} @else {
+  <div class="auth-container">
+    <h1>Maxi Yahtzee</h1>
+    <div class="auth-options">
+      <button type="button" (click)="continueAsGuest()" class="guest-btn">Continue as Guest</button>
+      <div class="divider">OR</div>
+      <amplify-authenticator>
+        <ng-template amplifySlot="authenticated">
+          <!-- This will be handled by the outer condition -->
+        </ng-template>
+      </amplify-authenticator>
+    </div>
+  </div>
+}
