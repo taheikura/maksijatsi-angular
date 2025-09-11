@@ -105,7 +105,7 @@ export class LobbyComponent implements OnInit {
   private readonly userService = inject(UserService);
   private readonly gamesService = inject(GamesService);
   private readonly router = inject(Router);
-  private readonly graphqlClient = inject(GraphqlClientService);
+  readonly graphqlClient = inject(GraphqlClientService);
 
   constructor() {
     this.dataSource = new GamesDataSource(this.gamesService, this.graphqlClient);
