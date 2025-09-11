@@ -120,9 +120,14 @@ export class LobbyComponent implements OnInit {
   private ensureUserProfile(): void {
     if (this.graphqlClient.isGuest) return;
 
-    this.getUserProfile().catch((error) => {
-      console.error('Error ensuring user profile:', error);
-    });
+    this.getUserProfile()
+      .then(() => {
+        // Reload lobby players after ensuring user profile exists
+        this.loadLobbyPlayers();
+      })
+      .catch((error) => {
+        console.error('Error ensuring user profile:', error);
+      });
   }
 
   async loadLobbyPlayers() {
