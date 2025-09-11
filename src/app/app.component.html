@@ -9,7 +9,7 @@
     <div class="auth-options">
       <button type="button" (click)="continueAsGuest()" class="guest-btn">Continue as Guest</button>
       <div class="divider">OR</div>
-      <amplify-authenticator>
+      <amplify-authenticator [signUpAttributes]="['nickname']">
         <ng-template amplifySlot="authenticated">
           <!-- This will be handled by the outer condition -->
         </ng-template>
