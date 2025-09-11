@@ -1,13 +1,23 @@
-import type { Schema } from '../../data/resource.js';
 import { Amplify } from 'aws-amplify';
 import { generateClient } from 'aws-amplify/data';
+import type { Schema } from '../../data/resource.js';
+
+const endpoint = process.env.AMPLIFY_DATA_GRAPHQL_ENDPOINT;
+const region = process.env.AWS_REGION;
+const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
+const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
+const sessionToken = process.env.AWS_SESSION_TOKEN;
+
+if (!endpoint || !region || !accessKeyId || !secretAccessKey || !sessionToken) {
+  throw new Error('Missing required environment variables');
+}
 
 Amplify.configure(
   {
     API: {
       GraphQL: {
-        endpoint: process.env.AMPLIFY_DATA_GRAPHQL_ENDPOINT!,
-        region: process.env.AWS_REGION!,
+        endpoint,
+        region,
         defaultAuthMode: 'iam',
       },
     },
@@ -17,9 +27,9 @@ Amplify.configure(
       credentialsProvider: {
         getCredentialsAndIdentityId: async () => ({
           credentials: {
-            accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
-            sessionToken: process.env.AWS_SESSION_TOKEN!,
+            accessKeyId,
+            secretAccessKey,
+            sessionToken,
           },
         }),
         clearCredentialsAndIdentityId: () => {},
