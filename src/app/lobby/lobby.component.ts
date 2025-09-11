@@ -132,7 +132,7 @@ export class LobbyComponent implements OnInit {
 
       this.lobbyPlayers = Array.from(uniqueUsers.values()).map((user) => ({
         id: user.id,
-        name: user.name ?? user.profileOwner ?? 'Tuntematon',
+        name: user.name ?? 'Tuntematon',
       }));
     } catch (error) {
       console.error('Error loading lobby players:', error);
@@ -185,12 +185,15 @@ export class LobbyComponent implements OnInit {
 
         // If authenticated user doesn't exist, create it
         if (!data || data.length === 0) {
-          const userName = this.userAttributes?.nickname ?? this.user?.userId ?? 'Unknown';
+          console.log('User attributes:', this.userAttributes);
+          const nickname = this.userAttributes?.nickname ?? 'Unknown User';
+          console.log('Creating user with nickname:', nickname);
           const createResult = await this.graphqlClient.client.models['User']['create']({
-            name: userName,
+            name: nickname,
             profileOwner: `${this.user?.userId}::${this.user?.username ?? this.user?.userId}`,
             isGuest: false,
           });
+          console.log('Created user:', createResult.data);
           return createResult.data;
         }
 
