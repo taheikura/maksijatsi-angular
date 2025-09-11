@@ -30,13 +30,25 @@ export class AppComponent implements OnInit {
     return this.router.url.includes('/game/');
   }
 
-  continueAsGuest(): void {
+  async continueAsGuest(): Promise<void> {
     this.isGuest = true;
+    const guestId = this.generateGuestId();
     // Store guest status in localStorage for persistence
     localStorage.setItem('isGuest', 'true');
-    localStorage.setItem('guestId', this.generateGuestId());
+    localStorage.setItem('guestId', guestId);
     // Switch GraphQL client to guest mode
     this.graphqlClient.switchToGuestMode();
+
+    // Create guest user record
+    try {
+      await this.graphqlClient.client.models.User.create({
+        name: `Vieras_${guestId.slice(-4)}`,
+        isGuest: true,
+        guestId,
+      });
+    } catch (error) {
+      console.error('Error creating guest user:', error);
+    }
   }
 
   async signOut(): Promise<void> {

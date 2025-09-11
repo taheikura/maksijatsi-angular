@@ -1,18 +1,18 @@
 import { CommonModule } from '@angular/common';
 import {
+  AfterViewChecked,
   Component,
+  ElementRef,
+  inject,
   Input,
   OnDestroy,
   OnInit,
   ViewChild,
-  ElementRef,
-  AfterViewChecked,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { fetchUserAttributes } from 'aws-amplify/auth';
-import { generateClient } from 'aws-amplify/data';
 import { Subscription } from 'rxjs';
-import type { Schema } from '../../../amplify/data/resource';
+import { GraphqlClientService } from '../shared/graphql-client.service';
 
 interface Message {
   id: string;
@@ -111,10 +111,14 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
   messages: Message[] = [];
   newMessage = '';
   private subscription?: Subscription;
-  private readonly client = generateClient<Schema>();
+  private readonly graphqlClient = inject(GraphqlClientService);
   private senderName = 'Sinä';
   private lastMessageTime = 0;
   private readonly MESSAGE_DELAY = 2000;
+
+  private get client() {
+    return this.graphqlClient.client;
+  }
 
   ngOnInit(): void {
     this.loadUserAttributes();
@@ -135,10 +139,21 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
 
   private async loadUserAttributes(): Promise<void> {
     try {
-      const userAttributes = await fetchUserAttributes();
-      this.senderName = userAttributes.nickname ?? 'Sinä';
+      if (this.graphqlClient.isGuest) {
+        // For guests, use stored guest name or generate one
+        const guestId = localStorage.getItem('guestId') ?? 'guest';
+        this.senderName = `Vieras_${guestId.slice(-4)}`;
+      } else {
+        const userAttributes = await fetchUserAttributes();
+        this.senderName = userAttributes.nickname ?? 'Sinä';
+      }
     } catch (error) {
       console.error('Error loading user attributes:', error);
+      // Fallback for guests
+      if (this.graphqlClient.isGuest) {
+        const guestId = localStorage.getItem('guestId') ?? 'guest';
+        this.senderName = `Vieras_${guestId.slice(-4)}`;
+      }
     }
   }
 

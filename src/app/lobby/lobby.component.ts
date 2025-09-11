@@ -52,7 +52,7 @@ export class GamesDataSource implements DataSource<Game> {
 
       // Get all users in a single query to avoid N+1 problem
       const usersResult = await this.graphqlClient.client.models.User.list();
-      const gameIds = new Set(usersResult.data?.map((user) => user.gameId).filter(Boolean) || []);
+      const gameIds = new Set(usersResult.data?.map((user) => user.gameId).filter(Boolean) ?? []);
 
       const gamesWithPlayers = games.filter((game) => gameIds.has(game.id));
       this.gamesSubject.next(gamesWithPlayers);
@@ -84,8 +84,15 @@ export class GamesDataSource implements DataSource<Game> {
   styleUrl: './lobby.component.css',
 })
 @PreloadData(async function (this: LobbyComponent) {
-  this.user = await this.userService.fetchData();
-  this.userAttributes = await fetchUserAttributes();
+  if (!this.graphqlClient.isGuest) {
+    this.user = await this.userService.fetchData();
+    this.userAttributes = await fetchUserAttributes();
+  } else {
+    // For guests, create a mock user object
+    const guestId = localStorage.getItem('guestId') ?? 'guest';
+    this.user = { userId: guestId } as AuthUser;
+    this.userAttributes = { nickname: `Vieras_${guestId.slice(-4)}` };
+  }
 })
 export class LobbyComponent implements OnInit {
   user: AuthUser | null = null;
@@ -135,19 +142,36 @@ export class LobbyComponent implements OnInit {
 
   async getUserProfile() {
     try {
-      const { data, errors } = await this.graphqlClient.client.models['User']['list']({
-        filter: {
-          profileOwner: {
-            beginsWith: this.user?.userId,
-          },
-        },
-      });
-      if (errors) {
-        console.error('Error fetching user:', errors);
-        return null;
-      }
+      if (this.graphqlClient.isGuest) {
+        // For guests, look up by guestId
+        const guestId = localStorage.getItem('guestId');
+        if (!guestId) return null;
 
-      return data[0];
+        const { data, errors } = await this.graphqlClient.client.models['User']['list']({
+          filter: {
+            guestId: { eq: guestId },
+          },
+        });
+        if (errors) {
+          console.error('Error fetching guest user:', errors);
+          return null;
+        }
+        return data[0];
+      } else {
+        // For authenticated users, look up by profileOwner
+        const { data, errors } = await this.graphqlClient.client.models['User']['list']({
+          filter: {
+            profileOwner: {
+              beginsWith: this.user?.userId,
+            },
+          },
+        });
+        if (errors) {
+          console.error('Error fetching user:', errors);
+          return null;
+        }
+        return data[0];
+      }
     } catch (error) {
       console.error('error fetching user', error);
     }
@@ -184,15 +208,10 @@ export class LobbyComponent implements OnInit {
         }
       }
 
-      await this.graphqlClient.client.models['User']['update'](
-        {
-          id: user.id,
-          gameId: id,
-        },
-        {
-          authMode: 'userPool',
-        }
-      );
+      await this.graphqlClient.client.models['User']['update']({
+        id: user.id,
+        gameId: id,
+      });
       this.router.navigate(['/game', id]);
     } catch (error) {
       console.error('error joining game', error);
@@ -208,10 +227,11 @@ export class LobbyComponent implements OnInit {
       const name = window.prompt('Pelin nimi') ?? 'Nimeämätön peli';
       const host = this.getHostName();
 
-      const game = await this.graphqlClient.client.models['Game']['create'](
-        { name, hostedBy: host, state: 'joinable' },
-        { authMode: 'userPool' }
-      );
+      const game = await this.graphqlClient.client.models['Game']['create']({
+        name,
+        hostedBy: host,
+        state: 'joinable',
+      });
 
       if (game?.data && typeof game.data === 'object' && game.data !== null && 'id' in game.data) {
         const gameData = game.data as Record<string, unknown>;
@@ -230,15 +250,10 @@ export class LobbyComponent implements OnInit {
 
   async deleteGame(id: string) {
     try {
-      await this.graphqlClient.client.models['Game']['update'](
-        {
-          id,
-          state: 'finished',
-        },
-        {
-          authMode: 'userPool',
-        }
-      );
+      await this.graphqlClient.client.models['Game']['update']({
+        id,
+        state: 'finished',
+      });
     } catch (error) {
       console.error('Error deleting game:', error);
     }
